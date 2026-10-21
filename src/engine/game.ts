@@ -1,6 +1,7 @@
 import type { Card } from './types';
 import { createDeck, draw, shuffle } from './shoe';
 import { handValue, isBlackjack, isBust } from './hand';
+import { INITIAL_BALANCE, BANKRUPT_BAILOUT} from './types';
 
 // 'dealerTurn' is part of the model, but for now the dealer plays instantly inside STAND,
 // so the state never rests in it. It's there for later (e.g. animating dealer draws).
@@ -113,4 +114,46 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return finish({ ...state, deck, dealerHand });
     }
   }
+}
+
+export const initialBettingState = {
+  balance: INITIAL_BALANCE, // Starts at $500
+  currentBet: 0,
+  bailoutTriggered: false,
+};
+
+// 2. Helper function to settle bets and check for bankruptcy when a hand finishes:
+export function settleRoundBet(
+  balance: number,
+  currentBet: number,
+  outcome: 'blackjack' | 'win' | 'push' | 'lose'
+): { nextBalance: number; bailoutTriggered: boolean } {
+  let nextBalance = balance;
+
+  switch (outcome) {
+    case 'blackjack':
+      // Blackjack pays 3:2 (original bet returned + 1.5x winnings)
+      nextBalance += currentBet + Math.floor(currentBet * 1.5);
+      break;
+    case 'win':
+      // Standard win pays 1:1 (original bet returned + 1x winnings)
+      nextBalance += currentBet * 2;
+      break;
+    case 'push':
+      // Tie returns the original bet
+      nextBalance += currentBet;
+      break;
+    case 'lose':
+      // Bet was already deducted from balance when placed
+      break;
+  }
+
+  // Automatic Bankruptcy Bailout: If balance hits $0 after losing, grant $100
+  let bailoutTriggered = false;
+  if (nextBalance <= 0) {
+    nextBalance = BANKRUPT_BAILOUT;
+    bailoutTriggered = true;
+  }
+
+  return { nextBalance, bailoutTriggered };
 }
