@@ -2,6 +2,7 @@ import { useReducer } from 'react';
 import { createDealAction, gameReducer, initialState } from './engine/game';
 import Controls from './components/Controls';
 import Hand from './components/Hand';
+import Hint from './components/Hint';
 import ResultBanner from './components/ResultBanner';
 import './App.css';
 
@@ -14,6 +15,7 @@ export default function App() {
 
   return (
     <main className="table">
+      <Hint />
       <h1 className="table__title">Blackjack Trainer</h1>
 
       {state.phase === 'idle' ? (
