@@ -33,6 +33,9 @@ export default function App() {
 
       <Controls
         phase={state.phase}
+        canDouble={
+          state.phase === "playerTurn" && state.playerHand.length === 2
+        }
         onDeal={() => dispatch(createDealAction())}
         onHit={() => dispatch({ type: "HIT" })}
         onStand={() => dispatch({ type: "STAND" })}
