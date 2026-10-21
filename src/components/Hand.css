@@ -1,0 +1,23 @@
+.hand {
+  margin: 1.5rem 0;
+}
+
+.hand__title {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+}
+
+.hand__total {
+  font-weight: normal;
+  opacity: 0.85;
+}
+
+.hand__cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-height: 84px; /* keeps the layout steady before cards are dealt */
+}

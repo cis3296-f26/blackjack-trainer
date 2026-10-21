@@ -1,0 +1,26 @@
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.controls button {
+  min-width: 100px;
+  padding: 0.6rem 1rem;
+  font-size: 1rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 6px;
+  background: #f5c542;
+  color: #222;
+  cursor: pointer;
+}
+
+.controls button:hover:not(:disabled) {
+  background: #ffd75e;
+}
+
+.controls button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
