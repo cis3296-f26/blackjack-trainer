@@ -16,3 +16,10 @@ export function shuffle(cards: Card[]): Card[] {
   }
   return deck;
 }
+
+// Takes the top card without mutating the deck: returns the card and the remaining cards
+export function draw(deck: Card[]): { card: Card; rest: Card[] } {
+  if (deck.length === 0) throw new Error('Cannot draw from an empty deck');
+  const [card, ...rest] = deck;
+  return { card, rest };
+}
