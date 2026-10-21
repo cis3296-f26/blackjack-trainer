@@ -65,7 +65,21 @@ export function decideResult(playerHand: Card[], dealerHand: Card[]): Result {
 
 // Ends the hand: reveals everything and records the result
 function finish(state: GameState): GameState {
-  return { ...state, phase: 'done', result: decideResult(state.playerHand, state.dealerHand) };
+  const result = decideResult(state.playerHand, state.dealerHand);
+  const { nextBalance, bailoutTriggered } = settleRoundBet(
+    state.balance,
+    state.currentBet,
+    result
+  );
+
+  return {
+    ...state,
+    phase: 'done',
+    result,
+    balance: nextBalance,
+    currentBet: 0,
+    bailoutTriggered,
+  };
 }
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
