@@ -1,7 +1,7 @@
 import type { Card } from './types';
 import { createDeck, draw, shuffle } from './shoe';
 import { handValue, isBlackjack, isBust } from './hand';
-import { INITIAL_BALANCE, BANKRUPT_BAILOUT} from './types';
+import { INITIAL_BALANCE, BANKRUPT_BAILOUT, type ChipValue } from './types';
 
 // 'dealerTurn' is part of the model, but for now the dealer plays instantly inside STAND,
 // so the state never rests in it. It's there for later (e.g. animating dealer draws).
@@ -15,6 +15,9 @@ export interface GameState {
   dealerHand: Card[]; // dealerHand[1] is the hole card, hidden during the player's turn
   phase: Phase;
   result: Result | null; // set only when phase is 'done'
+  balance: number;
+  currentBet: number;
+  bailoutTriggered?: boolean;
 }
 
 // DEAL carries its own shuffled deck so the reducer stays pure (no randomness inside it).
@@ -22,7 +25,9 @@ export interface GameState {
 export type GameAction =
   | { type: 'DEAL'; deck: Card[] }
   | { type: 'HIT' }
-  | { type: 'STAND' };
+  | { type: 'STAND' }
+  | { type: 'PLACE_BET'; amount: ChipValue }
+  | { type: 'CLEAR_BET' };
 
 export const initialState: GameState = {
   deck: [],
@@ -30,6 +35,9 @@ export const initialState: GameState = {
   dealerHand: [],
   phase: 'idle',
   result: null,
+  balance: INITIAL_BALANCE, // 500
+  currentBet: 0,
+  bailoutTriggered: false,
 };
 
 // v0.1 rule: one standard 52-card deck, freshly shuffled every hand
@@ -81,6 +89,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         dealerHand: [dealt[1], dealt[3]],
         phase: 'playerTurn',
         result: null,
+        balance: state.balance,
+        currentBet: state.currentBet,
+        bailoutTriggered: state.bailoutTriggered,
       };
 
       // A blackjack on either side ends the hand immediately
@@ -112,6 +123,29 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       }
 
       return finish({ ...state, deck, dealerHand });
+    }
+
+    case 'PLACE_BET': {
+      if ((state.phase !== 'idle' && state.phase !== 'done') || state.balance < action.amount) {
+        return state;
+      }
+      return {
+        ...state,
+        balance: state.balance - action.amount,
+        currentBet: state.currentBet + action.amount,
+        bailoutTriggered: false,
+      };
+    }
+
+    case 'CLEAR_BET': {
+      if (state.phase !== 'idle' && state.phase !== 'done') {
+        return state;
+      }
+      return {
+        ...state,
+        balance: state.balance + state.currentBet,
+        currentBet: 0,
+      };
     }
   }
 }

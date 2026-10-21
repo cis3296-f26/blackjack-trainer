@@ -16,7 +16,7 @@ interface ControlsProps {
 }
 
 // Action buttons. Each one is enabled only in the phase where it makes sense.
-export default function Controls({ phase, balance, currentBet, bailoutTriggered, onPlaceBet, onClearBet,onDeal, onHit, onStand }: ControlsProps) {
+export default function Controls({ phase, balance = 500, currentBet = 0, bailoutTriggered = false, onPlaceBet, onClearBet,onDeal, onHit, onStand }: ControlsProps) {
   const isPlayerTurn = phase === 'playerTurn';
   const canBet = phase === 'idle' || phase === 'done';
   const canDeal = canBet && currentBet > 0;
