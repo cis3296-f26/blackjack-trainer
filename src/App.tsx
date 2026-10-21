@@ -1,5 +1,6 @@
 import { useReducer } from 'react';
 import { createDealAction, gameReducer, initialState } from './engine/game';
+
 import Controls from './components/Controls';
 import Hand from './components/Hand';
 import Hint from './components/Hint';
@@ -31,6 +32,11 @@ export default function App() {
 
       <Controls
         phase={state.phase}
+        balance={state.balance}
+        currentBet={state.currentBet}
+        bailoutTriggered={state.bailoutTriggered}
+        onPlaceBet={(amount) => dispatch({ type: 'PLACE_BET', amount })}
+        onClearBet={() => dispatch({ type: 'CLEAR_BET' })}
         onDeal={() => dispatch(createDealAction())}
         onHit={() => dispatch({ type: 'HIT' })}
         onStand={() => dispatch({ type: 'STAND' })}
