@@ -18,6 +18,7 @@ export interface GameState {
   balance: number;
   currentBet: number;
   bailoutTriggered?: boolean;
+  doubled: boolean;
 }
 
 // DEAL carries its own shuffled deck so the reducer stays pure (no randomness inside it).
@@ -26,6 +27,7 @@ export type GameAction =
   | { type: 'DEAL'; deck: Card[] }
   | { type: 'HIT' }
   | { type: 'STAND' }
+  | { type: 'DOUBLE' }
   | { type: 'PLACE_BET'; amount: ChipValue }
   | { type: 'CLEAR_BET' };
 
@@ -38,6 +40,7 @@ export const initialState: GameState = {
   balance: INITIAL_BALANCE, // 500
   currentBet: 0,
   bailoutTriggered: false,
+  doubled: false,
 };
 
 // v0.1 rule: one standard 52-card deck, freshly shuffled every hand
@@ -81,6 +84,16 @@ function finish(state: GameState): GameState {
     bailoutTriggered,
   };
 }
+function dealerPlays(state: GameState): GameState {
+  let deck = state.deck;
+  const dealerHand = [...state.dealerHand];
+  while (handValue(dealerHand).total < 17) {
+    const { card, rest } = draw(deck);
+    dealerHand.push(card);
+    deck = rest;
+  }
+  return finish({ ...state, deck, dealerHand });
+}
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case "DEAL": {
@@ -106,6 +119,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         balance: state.balance,
         currentBet: state.currentBet,
         bailoutTriggered: state.bailoutTriggered,
+        doubled: false,
       };
 
       // A blackjack on either side ends the hand immediately
