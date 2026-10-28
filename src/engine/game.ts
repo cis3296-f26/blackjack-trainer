@@ -97,7 +97,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case "DEAL": {
       // Can't deal in the middle of a hand
-      if (state.phase === "playerTurn" || state.phase === "dealerTurn")
+      if (
+        state.phase === "playerTurn" ||
+        state.phase === "dealerTurn" ||
+        state.currentBet === 0
+      )
         return state;
 
       // Deal in casino order: player, dealer, player, dealer
@@ -163,7 +167,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         playerHand: [...state.playerHand, card],
         balance: state.balance - state.currentBet,
         currentBet: state.currentBet * 2,
-        doubled: true,
       };
 
       // Exactly one card, then the turn is over
