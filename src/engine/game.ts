@@ -82,6 +82,17 @@ function finish(state: GameState): GameState {
     bailoutTriggered,
   };
 }
+// Dealer draws until 17 or more, standing on all 17s, then the hand ends
+function dealerPlays(state: GameState): GameState {
+  let deck = state.deck;
+  const dealerHand = [...state.dealerHand];
+  while (handValue(dealerHand).total < 17) {
+    const { card, rest } = draw(deck);
+    dealerHand.push(card);
+    deck = rest;
+  }
+  return finish({ ...state, deck, dealerHand });
+}
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case "DEAL": {
