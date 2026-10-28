@@ -13,6 +13,7 @@ interface ControlsProps {
   onDeal: () => void;
   onHit: () => void;
   onStand: () => void;
+  onDouble: () => void;
 }
 
 // Action buttons. Each one is enabled only in the phase where it makes sense.
