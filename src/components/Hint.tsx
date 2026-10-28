@@ -1,12 +1,27 @@
 import { useState } from 'react';
+import type { Analysis, Outcome } from '../engine/strategy';
 import './Hint.css';
 
 interface HintProps {
-  text?: string;
+  analysis: Analysis | null;
 }
 
-// Button in the top-right corner that toggles a small window with hint text.
-export default function Hint({ text = 'Hints will show up here.' }: HintProps) {
+const pct = (n: number) => `${Math.round(n * 100)}%`;
+const ev = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(3)}`;
+
+function Row({ label, o, best }: { label: string; o: Outcome; best: boolean }) {
+  return (
+    <p className="hint__row">
+      <strong>
+        {label}
+        {best ? ' ✓' : ''}
+      </strong>{' '}
+      EV {ev(o.ev)} · win {pct(o.win)} · push {pct(o.push)} · lose {pct(o.lose)}
+    </p>
+  );
+}
+
+export default function Hint({ analysis }: HintProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -33,7 +48,18 @@ export default function Hint({ text = 'Hints will show up here.' }: HintProps) {
               ×
             </button>
           </div>
-          <p className="hint__text">{text}</p>
+
+          {analysis ? (
+            <>
+              <p className="hint__text">
+                Recommended: <strong>{analysis.recommended === 'hit' ? 'Hit' : 'Stand'}</strong>
+              </p>
+              <Row label="Hit" o={analysis.hit} best={analysis.recommended === 'hit'} />
+              <Row label="Stand" o={analysis.stand} best={analysis.recommended === 'stand'} />
+            </>
+          ) : (
+            <p className="hint__text">Hints are available during your turn.</p>
+          )}
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
-import { useReducer } from 'react';
+import { useMemo, useReducer } from 'react';
 import { createDealAction, gameReducer, initialState } from './engine/game';
+import { analyzeHand } from './engine/strategy';
 import { useAuth } from './AuthContext';
 
 import Controls from './components/Controls';
@@ -21,8 +22,17 @@ export default function App() {
   // The dealer's hole card stays face down until the player stands or busts
   const hideHoleCard = state.phase === "playerTurn";
 
+  const analysis = useMemo(
+  () =>
+    state.phase === 'playerTurn'
+      ? analyzeHand(state.playerHand, state.dealerHand[0])
+      : null,
+  [state.phase, state.playerHand, state.dealerHand],
+);
+
   return (
     <main className="table">
+      <Hint analysis={analysis} />
       <div className="app__user-bar">
         <span className="app__user-name">
           {currentUser.displayName || currentUser.email}
