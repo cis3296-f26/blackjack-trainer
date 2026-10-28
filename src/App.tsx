@@ -1,11 +1,11 @@
-import { useReducer } from 'react';
-import { createDealAction, gameReducer, initialState } from './engine/game';
+import { useReducer } from "react";
+import { createDealAction, gameReducer, initialState } from "./engine/game";
 
-import Controls from './components/Controls';
-import Hand from './components/Hand';
-import Hint from './components/Hint';
-import ResultBanner from './components/ResultBanner';
-import './App.css';
+import Controls from "./components/Controls";
+import Hand from "./components/Hand";
+import Hint from "./components/Hint";
+import ResultBanner from "./components/ResultBanner";
+import "./App.css";
 
 // Top-level screen: owns the game state and passes pieces of it down to components
 export default function App() {
@@ -39,12 +39,17 @@ export default function App() {
         balance={state.balance}
         currentBet={state.currentBet}
         bailoutTriggered={state.bailoutTriggered}
-        onPlaceBet={(amount) => dispatch({ type: 'PLACE_BET', amount })}
-        onClearBet={() => dispatch({ type: 'CLEAR_BET' })}
+        onPlaceBet={(amount) => dispatch({ type: "PLACE_BET", amount })}
+        onClearBet={() => dispatch({ type: "CLEAR_BET" })}
         onDeal={() => dispatch(createDealAction())}
         onHit={() => dispatch({ type: "HIT" })}
         onStand={() => dispatch({ type: "STAND" })}
         onDouble={() => dispatch({ type: "DOUBLE" })}
+        canDouble={
+          state.phase === "playerTurn" &&
+          state.playerHand.length === 2 &&
+          state.balance >= state.currentBet
+        }
       />
     </main>
   );
