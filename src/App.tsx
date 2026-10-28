@@ -1,13 +1,21 @@
 import { useReducer } from 'react';
 import { createDealAction, gameReducer, initialState } from './engine/game';
+import { useAuth } from './AuthContext';
+
 import Controls from './components/Controls';
 import Hand from './components/Hand';
 import Hint from './components/Hint';
 import ResultBanner from './components/ResultBanner';
 import './App.css';
+import AuthPage from './components/AuthPage';
 
 // Top-level screen: owns the game state and passes pieces of it down to components
 export default function App() {
+  const { currentUser, logout }= useAuth();
+
+  if (!currentUser) {
+    return <AuthPage onSuccess={() => {}} />;
+  }
   const [state, dispatch] = useReducer(gameReducer, initialState);
 
   // The dealer's hole card stays face down until the player stands or busts
@@ -15,6 +23,15 @@ export default function App() {
 
   return (
     <main className="table">
+      <div className="app__user-bar">
+        <span className="app__user-name">
+          {currentUser.displayName || currentUser.email}
+        </span>
+        <button type="button" className="app__logout" onClick={logout}>
+          Log Out
+        </button>
+      </div>
+
       <Hint />
       <h1 className="table__title">Blackjack Trainer</h1>
 

@@ -12,3 +12,37 @@
 .table__hint {
   opacity: 0.8;
 }
+
+.app__user-bar {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.app__user-name {
+  font-size: 0.95rem;
+  font-weight: bold;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 0.45rem 0.75rem;
+  border-radius: 6px;
+}
+
+.app__logout {
+  padding: 0.6rem 1rem;
+  font-size: 1rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 6px;
+  background: #f5c542;
+  color: #222;
+  cursor: pointer;
+}
+
+.app__logout:hover {
+  background: #ffd75e;
+}
