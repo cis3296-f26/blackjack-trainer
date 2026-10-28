@@ -1,5 +1,5 @@
 import type { Card } from './types';
-import { createDeck, draw, shuffle } from './shoe';
+import { createShoe, CUT_CARD_THRESHOLD, draw, shuffle } from './shoe';
 import { handValue, isBlackjack, isBust } from './hand';
 import { INITIAL_BALANCE, BANKRUPT_BAILOUT, type ChipValue } from './types';
 
@@ -40,9 +40,9 @@ export const initialState: GameState = {
   bailoutTriggered: false,
 };
 
-// v0.1 rule: one standard 52-card deck, freshly shuffled every hand
-export function createDealAction(): GameAction {
-  return { type: 'DEAL', deck: shuffle(createDeck()) };
+//Uses a multideck shoe and shuffles it. The dealer draws from the top of the shoe, and when the shoe is low on cards, it is reshuffled.
+export function createDealAction(numDecks?: number): GameAction {
+  return { type: 'DEAL', deck: shuffle(createShoe(numDecks)) };
 }
 
 // Decides the outcome from the player's point of view once the hand is over
@@ -89,7 +89,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (state.phase === 'playerTurn' || state.phase === 'dealerTurn') return state;
 
       // Deal in casino order: player, dealer, player, dealer
-      let deck = action.deck;
+      const isStackedTestDeck = action.deck.length < CUT_CARD_THRESHOLD;
+      const needsReshuffle = state.deck.length < CUT_CARD_THRESHOLD || isStackedTestDeck;
+      let deck = needsReshuffle ? action.deck : state.deck;
       const dealt: Card[] = [];
       for (let i = 0; i < 4; i++) {
         const { card, rest } = draw(deck);
