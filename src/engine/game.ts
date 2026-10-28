@@ -1,7 +1,7 @@
-import type { Card } from './types';
-import { createDeck, draw, shuffle } from './shoe';
-import { handValue, isBlackjack, isBust } from './hand';
-import { INITIAL_BALANCE, BANKRUPT_BAILOUT, type ChipValue } from './types';
+import type { Card } from "./types";
+import { createDeck, draw, shuffle } from "./shoe";
+import { handValue, isBlackjack, isBust } from "./hand";
+import { INITIAL_BALANCE, BANKRUPT_BAILOUT, type ChipValue } from "./types";
 
 // 'dealerTurn' is part of the model, but for now the dealer plays instantly inside STAND,
 // so the state never rests in it. It's there for later (e.g. animating dealer draws).
@@ -23,11 +23,12 @@ export interface GameState {
 // DEAL carries its own shuffled deck so the reducer stays pure (no randomness inside it).
 // Use createDealAction() in the UI; tests can pass a stacked deck instead.
 export type GameAction =
-  | { type: 'DEAL'; deck: Card[] }
-  | { type: 'HIT' }
-  | { type: 'STAND' }
-  | { type: 'PLACE_BET'; amount: ChipValue }
-  | { type: 'CLEAR_BET' };
+  | { type: "DEAL"; deck: Card[] }
+  | { type: "HIT" }
+  | { type: "STAND" }
+  | { type: "DOUBLE" }
+  | { type: "PLACE_BET"; amount: ChipValue }
+  | { type: "CLEAR_BET" };
 
 export const initialState: GameState = {
   deck: [],
@@ -74,7 +75,7 @@ function finish(state: GameState): GameState {
 
   return {
     ...state,
-    phase: 'done',
+    phase: "done",
     result,
     balance: nextBalance,
     currentBet: 0,
@@ -136,14 +137,21 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "DOUBLE": {
       // Only allowed on the first two cards
-      if (state.phase !== "playerTurn" || state.playerHand.length !== 2)
+      if (
+        state.phase !== "playerTurn" ||
+        state.playerHand.length !== 2 ||
+        state.balance < state.currentBet
+      ) {
         return state;
+      }
 
       const { card, rest } = draw(state.deck);
       const next = {
         ...state,
         deck: rest,
         playerHand: [...state.playerHand, card],
+        balance: state.balance - state.currentBet,
+        currentBet: state.currentBet * 2,
         doubled: true,
       };
 
@@ -152,8 +160,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return dealerPlays(next);
     }
 
-    case 'PLACE_BET': {
-      if ((state.phase !== 'idle' && state.phase !== 'done') || state.balance < action.amount) {
+    case "PLACE_BET": {
+      if (
+        (state.phase !== "idle" && state.phase !== "done") ||
+        state.balance < action.amount
+      ) {
         return state;
       }
       return {
@@ -164,8 +175,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
-    case 'CLEAR_BET': {
-      if (state.phase !== 'idle' && state.phase !== 'done') {
+    case "CLEAR_BET": {
+      if (state.phase !== "idle" && state.phase !== "done") {
         return state;
       }
       return {
@@ -187,24 +198,24 @@ export const initialBettingState = {
 export function settleRoundBet(
   balance: number,
   currentBet: number,
-  outcome: 'blackjack' | 'win' | 'push' | 'lose'
+  outcome: "blackjack" | "win" | "push" | "lose"
 ): { nextBalance: number; bailoutTriggered: boolean } {
   let nextBalance = balance;
 
   switch (outcome) {
-    case 'blackjack':
+    case "blackjack":
       // Blackjack pays 3:2 (original bet returned + 1.5x winnings)
       nextBalance += currentBet + Math.floor(currentBet * 1.5);
       break;
-    case 'win':
+    case "win":
       // Standard win pays 1:1 (original bet returned + 1x winnings)
       nextBalance += currentBet * 2;
       break;
-    case 'push':
+    case "push":
       // Tie returns the original bet
       nextBalance += currentBet;
       break;
-    case 'lose':
+    case "lose":
       // Bet was already deducted from balance when placed
       break;
   }
