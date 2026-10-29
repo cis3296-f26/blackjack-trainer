@@ -1,5 +1,5 @@
 import { useMemo, useReducer } from 'react';
-import { createDealAction, gameReducer, initialState } from './engine/game';
+import { canDouble, createDealAction, gameReducer, initialState } from './engine/game';
 import { analyzeHand } from './engine/strategy';
 import { useAuth } from './AuthContext';
 
@@ -46,7 +46,11 @@ export default function App() {
       <h1 className="table__title">Blackjack Trainer</h1>
 
       {state.phase === "idle" ? (
-        <p className="table__hint">Press Deal to start a hand.</p>
+        <p className="table__hint">
+          {state.freePlay
+            ? "Press Deal to start a hand."
+            : "Place a bet, then press Deal."}
+        </p>
       ) : (
         <>
           <Hand
@@ -65,17 +69,15 @@ export default function App() {
         balance={state.balance}
         currentBet={state.currentBet}
         bailoutTriggered={state.bailoutTriggered}
+        freePlay={state.freePlay}
+        onToggleFreePlay={(enabled) => dispatch({ type: "SET_FREE_PLAY", enabled })}
         onPlaceBet={(amount) => dispatch({ type: "PLACE_BET", amount })}
         onClearBet={() => dispatch({ type: "CLEAR_BET" })}
         onDeal={() => dispatch(createDealAction())}
         onHit={() => dispatch({ type: "HIT" })}
         onStand={() => dispatch({ type: "STAND" })}
         onDouble={() => dispatch({ type: "DOUBLE" })}
-        canDouble={
-          state.phase === "playerTurn" &&
-          state.playerHand.length === 2 &&
-          state.balance >= state.currentBet
-        }
+        canDouble={canDouble(state)}
       />
     </main>
   );
