@@ -19,6 +19,7 @@ export interface GameState {
   currentBet: number;
   bailoutTriggered?: boolean;
   doubled: boolean;
+  freePlay: boolean; // no chips at stake; the bankroll is left untouched until betting resumes
 }
 
 // DEAL carries its own shuffled deck so the reducer stays pure (no randomness inside it).
@@ -29,7 +30,8 @@ export type GameAction =
   | { type: 'STAND' }
   | { type: 'DOUBLE' }
   | { type: 'PLACE_BET'; amount: ChipValue }
-  | { type: 'CLEAR_BET' };
+  | { type: 'CLEAR_BET' }
+  | { type: 'SET_FREE_PLAY'; enabled: boolean };
 
 export const initialState: GameState = {
   deck: [],
@@ -41,11 +43,21 @@ export const initialState: GameState = {
   currentBet: 0,
   bailoutTriggered: false,
   doubled: false,
+  freePlay: false,
 };
 
 // Supplies a freshly shuffled multi-deck shoe; DEAL only uses it once the current shoe hits the cut card
 export function createDealAction(): GameAction {
   return { type: "DEAL", deck: shuffle(createShoe()) };
+}
+
+// Doubling is only allowed on the first two cards, and in betting mode only if the balance covers the extra bet
+export function canDouble(state: GameState): boolean {
+  return (
+    state.phase === "playerTurn" &&
+    state.playerHand.length === 2 &&
+    (state.freePlay || state.balance >= state.currentBet)
+  );
 }
 
 // Decides the outcome from the player's point of view once the hand is over
@@ -69,6 +81,12 @@ export function decideResult(playerHand: Card[], dealerHand: Card[]): Result {
 // Ends the hand: reveals everything and records the result
 function finish(state: GameState): GameState {
   const result = decideResult(state.playerHand, state.dealerHand);
+
+  // Free play has nothing to settle, so the balance stays as it was
+  if (state.freePlay) {
+    return { ...state, phase: "done", result, bailoutTriggered: false };
+  }
+
   const { nextBalance, bailoutTriggered } = settleRoundBet(
     state.balance,
     state.currentBet,
@@ -101,7 +119,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (
         state.phase === "playerTurn" ||
         state.phase === "dealerTurn" ||
-        state.currentBet === 0
+        (state.currentBet === 0 && !state.freePlay)
       )
         return state;
 
@@ -126,6 +144,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         currentBet: state.currentBet,
         bailoutTriggered: state.bailoutTriggered,
         doubled: false,
+        freePlay: state.freePlay,
       };
 
       // A blackjack on either side ends the hand immediately
@@ -155,22 +174,17 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "DOUBLE": {
-      // Only allowed on the first two cards
-      if (
-        state.phase !== "playerTurn" ||
-        state.playerHand.length !== 2 ||
-        state.balance < state.currentBet
-      ) {
-        return state;
-      }
+      if (!canDouble(state)) return state;
 
       const { card, rest } = draw(state.deck);
       const next = {
         ...state,
         deck: rest,
         playerHand: [...state.playerHand, card],
-        balance: state.balance - state.currentBet,
-        currentBet: state.currentBet * 2,
+        doubled: true,
+        // Free play has no bet to double
+        balance: state.freePlay ? state.balance : state.balance - state.currentBet,
+        currentBet: state.freePlay ? state.currentBet : state.currentBet * 2,
       };
 
       // Exactly one card, then the turn is over
@@ -181,6 +195,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case "PLACE_BET": {
       if (
         (state.phase !== "idle" && state.phase !== "done") ||
+        state.freePlay ||
         state.balance < action.amount
       ) {
         return state;
@@ -194,13 +209,31 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "CLEAR_BET": {
-      if (state.phase !== "idle" && state.phase !== "done") {
+      if ((state.phase !== "idle" && state.phase !== "done") || state.freePlay) {
         return state;
       }
       return {
         ...state,
         balance: state.balance + state.currentBet,
         currentBet: 0,
+      };
+    }
+
+    case "SET_FREE_PLAY": {
+      // Mode can only change between hands
+      if (
+        (state.phase !== "idle" && state.phase !== "done") ||
+        state.freePlay === action.enabled
+      ) {
+        return state;
+      }
+      // Entering free play refunds any chips already on the table
+      return {
+        ...state,
+        freePlay: action.enabled,
+        balance: state.balance + state.currentBet,
+        currentBet: 0,
+        bailoutTriggered: false,
       };
     }
   }
