@@ -43,9 +43,9 @@ export const initialState: GameState = {
   doubled: false,
 };
 
-// v0.1 rule: one standard 52-card deck, freshly shuffled every hand
+// Supplies a freshly shuffled multi-deck shoe; DEAL only uses it once the current shoe hits the cut card
 export function createDealAction(): GameAction {
-  return { type: "DEAL", deck: shuffle(createDeck()) };
+  return { type: "DEAL", deck: shuffle(createShoe()) };
 }
 
 // Decides the outcome from the player's point of view once the hand is over

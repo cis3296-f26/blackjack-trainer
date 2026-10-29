@@ -13,10 +13,6 @@ import AuthPage from './components/AuthPage';
 // Top-level screen: owns the game state and passes pieces of it down to components
 export default function App() {
   const { currentUser, logout }= useAuth();
-
-  if (!currentUser) {
-    return <AuthPage onSuccess={() => {}} />;
-  }
   const [state, dispatch] = useReducer(gameReducer, initialState);
 
   // The dealer's hole card stays face down until the player stands or busts
@@ -30,9 +26,13 @@ export default function App() {
   [state.phase, state.playerHand, state.dealerHand],
 );
 
+  // Hooks above must run on every render, so the login gate comes after them
+  if (!currentUser) {
+    return <AuthPage onSuccess={() => {}} />;
+  }
+
   return (
     <main className="table">
-      <Hint analysis={analysis} />
       <div className="app__user-bar">
         <span className="app__user-name">
           {currentUser.displayName || currentUser.email}
@@ -42,7 +42,7 @@ export default function App() {
         </button>
       </div>
 
-      <Hint />
+      <Hint analysis={analysis} />
       <h1 className="table__title">Blackjack Trainer</h1>
 
       {state.phase === "idle" ? (
