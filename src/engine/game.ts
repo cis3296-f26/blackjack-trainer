@@ -1,7 +1,7 @@
-import type { Card } from "./types";
-import { createDeck, draw, shuffle } from "./shoe";
-import { handValue, isBlackjack, isBust } from "./hand";
-import { INITIAL_BALANCE, BANKRUPT_BAILOUT, type ChipValue } from "./types";
+import type { Card } from './types';
+import { createShoe, CUT_CARD_THRESHOLD, draw, shuffle } from './shoe';
+import { handValue, isBlackjack, isBust } from './hand';
+import { INITIAL_BALANCE, BANKRUPT_BAILOUT, type ChipValue } from './types';
 
 // 'dealerTurn' is part of the model, but for now the dealer plays instantly inside STAND,
 // so the state never rests in it. It's there for later (e.g. animating dealer draws).
@@ -18,17 +18,18 @@ export interface GameState {
   balance: number;
   currentBet: number;
   bailoutTriggered?: boolean;
+  doubled: boolean;
 }
 
 // DEAL carries its own shuffled deck so the reducer stays pure (no randomness inside it).
 // Use createDealAction() in the UI; tests can pass a stacked deck instead.
 export type GameAction =
-  | { type: "DEAL"; deck: Card[] }
-  | { type: "HIT" }
-  | { type: "STAND" }
-  | { type: "DOUBLE" }
-  | { type: "PLACE_BET"; amount: ChipValue }
-  | { type: "CLEAR_BET" };
+  | { type: 'DEAL'; deck: Card[] }
+  | { type: 'HIT' }
+  | { type: 'STAND' }
+  | { type: 'DOUBLE' }
+  | { type: 'PLACE_BET'; amount: ChipValue }
+  | { type: 'CLEAR_BET' };
 
 export const initialState: GameState = {
   deck: [],
@@ -39,6 +40,7 @@ export const initialState: GameState = {
   balance: INITIAL_BALANCE, // 500
   currentBet: 0,
   bailoutTriggered: false,
+  doubled: false,
 };
 
 // v0.1 rule: one standard 52-card deck, freshly shuffled every hand
@@ -82,7 +84,6 @@ function finish(state: GameState): GameState {
     bailoutTriggered,
   };
 }
-// Dealer draws until 17 or more, standing on all 17s, then the hand ends
 function dealerPlays(state: GameState): GameState {
   let deck = state.deck;
   const dealerHand = [...state.dealerHand];
@@ -105,7 +106,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         return state;
 
       // Deal in casino order: player, dealer, player, dealer
-      let deck = action.deck;
+      const isStackedTestDeck = action.deck.length < CUT_CARD_THRESHOLD;
+      const needsReshuffle = state.deck.length < CUT_CARD_THRESHOLD || isStackedTestDeck;
+      let deck = needsReshuffle ? action.deck : state.deck;
       const dealt: Card[] = [];
       for (let i = 0; i < 4; i++) {
         const { card, rest } = draw(deck);
@@ -122,6 +125,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         balance: state.balance,
         currentBet: state.currentBet,
         bailoutTriggered: state.bailoutTriggered,
+        doubled: false,
       };
 
       // A blackjack on either side ends the hand immediately
