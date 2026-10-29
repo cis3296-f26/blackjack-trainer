@@ -77,7 +77,7 @@ function finish(state: GameState): GameState {
 
   return {
     ...state,
-    phase: 'done',
+    phase: "done",
     result,
     balance: nextBalance,
     currentBet: 0,
@@ -98,7 +98,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case "DEAL": {
       // Can't deal in the middle of a hand
-      if (state.phase === "playerTurn" || state.phase === "dealerTurn")
+      if (
+        state.phase === "playerTurn" ||
+        state.phase === "dealerTurn" ||
+        state.currentBet === 0
+      )
         return state;
 
       // Deal in casino order: player, dealer, player, dealer
@@ -152,15 +156,21 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "DOUBLE": {
       // Only allowed on the first two cards
-      if (state.phase !== "playerTurn" || state.playerHand.length !== 2)
+      if (
+        state.phase !== "playerTurn" ||
+        state.playerHand.length !== 2 ||
+        state.balance < state.currentBet
+      ) {
         return state;
+      }
 
       const { card, rest } = draw(state.deck);
       const next = {
         ...state,
         deck: rest,
         playerHand: [...state.playerHand, card],
-        doubled: true,
+        balance: state.balance - state.currentBet,
+        currentBet: state.currentBet * 2,
       };
 
       // Exactly one card, then the turn is over
@@ -168,8 +178,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return dealerPlays(next);
     }
 
-    case 'PLACE_BET': {
-      if ((state.phase !== 'idle' && state.phase !== 'done') || state.balance < action.amount) {
+    case "PLACE_BET": {
+      if (
+        (state.phase !== "idle" && state.phase !== "done") ||
+        state.balance < action.amount
+      ) {
         return state;
       }
       return {
@@ -180,8 +193,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
-    case 'CLEAR_BET': {
-      if (state.phase !== 'idle' && state.phase !== 'done') {
+    case "CLEAR_BET": {
+      if (state.phase !== "idle" && state.phase !== "done") {
         return state;
       }
       return {
@@ -203,24 +216,24 @@ export const initialBettingState = {
 export function settleRoundBet(
   balance: number,
   currentBet: number,
-  outcome: 'blackjack' | 'win' | 'push' | 'lose'
+  outcome: "blackjack" | "win" | "push" | "lose"
 ): { nextBalance: number; bailoutTriggered: boolean } {
   let nextBalance = balance;
 
   switch (outcome) {
-    case 'blackjack':
+    case "blackjack":
       // Blackjack pays 3:2 (original bet returned + 1.5x winnings)
       nextBalance += currentBet + Math.floor(currentBet * 1.5);
       break;
-    case 'win':
+    case "win":
       // Standard win pays 1:1 (original bet returned + 1x winnings)
       nextBalance += currentBet * 2;
       break;
-    case 'push':
+    case "push":
       // Tie returns the original bet
       nextBalance += currentBet;
       break;
-    case 'lose':
+    case "lose":
       // Bet was already deducted from balance when placed
       break;
   }

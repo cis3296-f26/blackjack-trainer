@@ -65,12 +65,17 @@ export default function App() {
         balance={state.balance}
         currentBet={state.currentBet}
         bailoutTriggered={state.bailoutTriggered}
-        onPlaceBet={(amount) => dispatch({ type: 'PLACE_BET', amount })}
-        onClearBet={() => dispatch({ type: 'CLEAR_BET' })}
+        onPlaceBet={(amount) => dispatch({ type: "PLACE_BET", amount })}
+        onClearBet={() => dispatch({ type: "CLEAR_BET" })}
         onDeal={() => dispatch(createDealAction())}
         onHit={() => dispatch({ type: "HIT" })}
         onStand={() => dispatch({ type: "STAND" })}
         onDouble={() => dispatch({ type: "DOUBLE" })}
+        canDouble={
+          state.phase === "playerTurn" &&
+          state.playerHand.length === 2 &&
+          state.balance >= state.currentBet
+        }
       />
     </main>
   );

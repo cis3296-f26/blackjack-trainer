@@ -1,13 +1,13 @@
-import type { Phase } from '../engine/game';
-import { CASINO_CHIPS, type ChipValue } from '../engine/types';
-import './Controls.css';
-
+import type { Phase } from "../engine/game";
+import { CASINO_CHIPS, type ChipValue } from "../engine/types";
+import "./Controls.css";
 
 interface ControlsProps {
   phase: Phase;
   balance: number;
   currentBet: number;
   bailoutTriggered?: boolean;
+  canDouble: boolean;
   onPlaceBet: (amount: ChipValue) => void;
   onClearBet: () => void;
   onDeal: () => void;
@@ -17,9 +17,21 @@ interface ControlsProps {
 }
 
 // Action buttons. Each one is enabled only in the phase where it makes sense.
-export default function Controls({ phase, balance = 500, currentBet = 0, bailoutTriggered = false, onPlaceBet, onClearBet,onDeal, onHit, onStand }: ControlsProps) {
-  const isPlayerTurn = phase === 'playerTurn';
-  const canBet = phase === 'idle' || phase === 'done';
+export default function Controls({
+  phase,
+  balance = 500,
+  currentBet = 0,
+  bailoutTriggered = false,
+  canDouble,
+  onPlaceBet,
+  onClearBet,
+  onDeal,
+  onHit,
+  onStand,
+  onDouble,
+}: ControlsProps) {
+  const isPlayerTurn = phase === "playerTurn";
+  const canBet = phase === "idle" || phase === "done";
   const canDeal = canBet && currentBet > 0;
 
   return (
@@ -39,7 +51,8 @@ export default function Controls({ phase, balance = 500, currentBet = 0, bailout
       {/* Bankruptcy Bailout Alert */}
       {bailoutTriggered && canBet && (
         <div className="bailout-banner">
-          Bankrupt! You received a <strong>+$100</strong> bailout to keep playing.
+          Bankrupt! You received a <strong>+$100</strong> bailout to keep
+          playing.
         </div>
       )}
 
@@ -52,7 +65,7 @@ export default function Controls({ phase, balance = 500, currentBet = 0, bailout
               key={chip.value}
               type="button"
               className="casino-chip"
-              style={{ '--chip-color': chip.color } as React.CSSProperties}
+              style={{ "--chip-color": chip.color } as React.CSSProperties}
               disabled={!canBet || !canAfford}
               onClick={() => onPlaceBet(chip.value)}
               title={`Bet ${chip.label}`}
@@ -73,13 +86,16 @@ export default function Controls({ phase, balance = 500, currentBet = 0, bailout
           Clear Bet
         </button>
         <button type="button" onClick={onDeal} disabled={!canDeal}>
-          {phase === 'done' ? 'New Hand' : 'Deal'}
+          {phase === "done" ? "New Hand" : "Deal"}
         </button>
         <button type="button" onClick={onHit} disabled={!isPlayerTurn}>
           Hit
         </button>
         <button type="button" onClick={onStand} disabled={!isPlayerTurn}>
           Stand
+        </button>
+        <button type="button" onClick={onDouble} disabled={!canDouble}>
+          Double
         </button>
       </div>
     </div>
