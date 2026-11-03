@@ -1,5 +1,11 @@
 import type { Card } from './types';
-import { createShoe, CUT_CARD_THRESHOLD, draw, shuffle } from './shoe';
+import { createShoe, draw, shuffle } from './shoe';
+import {
+  DEFAULT_HOUSE_RULES,
+  MIN_CARDS_BEFORE_RESHUFFLE,
+  reshuffleThreshold,
+  type HouseRules,
+} from './rules';
 import { handValue, isBlackjack, isBust } from './hand';
 import { INITIAL_BALANCE, BANKRUPT_BAILOUT, type ChipValue } from './types';
 
@@ -20,6 +26,7 @@ export interface GameState {
   bailoutTriggered?: boolean;
   doubled: boolean;
   freePlay: boolean; // no chips at stake; the bankroll is left untouched until betting resumes
+  rules: HouseRules;
 }
 
 // DEAL carries its own shuffled deck so the reducer stays pure (no randomness inside it).
@@ -31,7 +38,8 @@ export type GameAction =
   | { type: 'DOUBLE' }
   | { type: 'PLACE_BET'; amount: ChipValue }
   | { type: 'CLEAR_BET' }
-  | { type: 'SET_FREE_PLAY'; enabled: boolean };
+  | { type: 'SET_FREE_PLAY'; enabled: boolean }
+  | { type: 'SET_HOUSE_RULES'; rules: HouseRules };
 
 export const initialState: GameState = {
   deck: [],
@@ -44,11 +52,12 @@ export const initialState: GameState = {
   bailoutTriggered: false,
   doubled: false,
   freePlay: false,
+  rules: DEFAULT_HOUSE_RULES,
 };
 
-// Supplies a freshly shuffled multi-deck shoe; DEAL only uses it once the current shoe hits the cut card
-export function createDealAction(): GameAction {
-  return { type: "DEAL", deck: shuffle(createShoe()) };
+// Supplies a freshly shuffled shoe for the current house rules; DEAL only uses it once the current shoe hits the cut card
+export function createDealAction(rules: HouseRules = DEFAULT_HOUSE_RULES): GameAction {
+  return { type: "DEAL", deck: shuffle(createShoe(rules.numDecks)) };
 }
 
 // Doubling is only allowed on the first two cards, and in betting mode only if the balance covers the extra bet
@@ -124,8 +133,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         return state;
 
       // Deal in casino order: player, dealer, player, dealer
-      const isStackedTestDeck = action.deck.length < CUT_CARD_THRESHOLD;
-      const needsReshuffle = state.deck.length < CUT_CARD_THRESHOLD || isStackedTestDeck;
+      const isStackedTestDeck = action.deck.length < MIN_CARDS_BEFORE_RESHUFFLE;
+      const needsReshuffle =
+        state.deck.length < reshuffleThreshold(state.rules) || isStackedTestDeck;
       let deck = needsReshuffle ? action.deck : state.deck;
       const dealt: Card[] = [];
       for (let i = 0; i < 4; i++) {
@@ -145,6 +155,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         bailoutTriggered: state.bailoutTriggered,
         doubled: false,
         freePlay: state.freePlay,
+        rules: state.rules,
       };
 
       // A blackjack on either side ends the hand immediately
@@ -234,6 +245,19 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         balance: state.balance + state.currentBet,
         currentBet: 0,
         bailoutTriggered: false,
+      };
+    }
+
+    case "SET_HOUSE_RULES": {
+      // House rules can only change between hands
+      if (state.phase !== "idle" && state.phase !== "done") return state;
+      // A different deck count means a different shoe, so drop the current one;
+      // the empty deck forces a fresh shuffle on the next DEAL
+      const decksChanged = action.rules.numDecks !== state.rules.numDecks;
+      return {
+        ...state,
+        rules: action.rules,
+        deck: decksChanged ? [] : state.deck,
       };
     }
   }

@@ -1,11 +1,13 @@
-import { useMemo, useReducer } from 'react';
+import { useEffect, useMemo, useReducer } from 'react';
 import { canDouble, createDealAction, gameReducer, initialState } from './engine/game';
 import { analyzeHand } from './engine/strategy';
 import { useAuth } from './AuthContext';
+import { loadHouseRules, saveHouseRules } from './houseRulesStorage';
 
 import Controls from './components/Controls';
 import Hand from './components/Hand';
 import Hint from './components/Hint';
+import HouseSettings from './components/HouseSettings';
 import ResultBanner from './components/ResultBanner';
 import './App.css';
 import AuthPage from './components/AuthPage';
@@ -13,7 +15,15 @@ import AuthPage from './components/AuthPage';
 // Top-level screen: owns the game state and passes pieces of it down to components
 export default function App() {
   const { currentUser, logout }= useAuth();
-  const [state, dispatch] = useReducer(gameReducer, initialState);
+  // Start with the house rules saved from the last visit
+  const [state, dispatch] = useReducer(gameReducer, undefined, () => ({
+    ...initialState,
+    rules: loadHouseRules(),
+  }));
+
+  useEffect(() => {
+    saveHouseRules(state.rules);
+  }, [state.rules]);
 
   // The dealer's hole card stays face down until the player stands or busts
   const hideHoleCard = state.phase === "playerTurn";
@@ -21,9 +31,9 @@ export default function App() {
   const analysis = useMemo(
   () =>
     state.phase === 'playerTurn'
-      ? analyzeHand(state.playerHand, state.dealerHand[0])
+      ? analyzeHand(state.playerHand, state.dealerHand[0], state.rules.numDecks)
       : null,
-  [state.phase, state.playerHand, state.dealerHand],
+  [state.phase, state.playerHand, state.dealerHand, state.rules.numDecks],
 );
 
   // Hooks above must run on every render, so the login gate comes after them
@@ -37,6 +47,11 @@ export default function App() {
         <span className="app__user-name">
           {currentUser.displayName || currentUser.email}
         </span>
+        <HouseSettings
+          rules={state.rules}
+          canEdit={state.phase === "idle" || state.phase === "done"}
+          onChange={(rules) => dispatch({ type: "SET_HOUSE_RULES", rules })}
+        />
         <button type="button" className="app__logout" onClick={logout}>
           Log Out
         </button>
@@ -73,7 +88,7 @@ export default function App() {
         onToggleFreePlay={(enabled) => dispatch({ type: "SET_FREE_PLAY", enabled })}
         onPlaceBet={(amount) => dispatch({ type: "PLACE_BET", amount })}
         onClearBet={() => dispatch({ type: "CLEAR_BET" })}
-        onDeal={() => dispatch(createDealAction())}
+        onDeal={() => dispatch(createDealAction(state.rules))}
         onHit={() => dispatch({ type: "HIT" })}
         onStand={() => dispatch({ type: "STAND" })}
         onDouble={() => dispatch({ type: "DOUBLE" })}

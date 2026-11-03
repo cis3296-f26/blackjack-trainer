@@ -4,7 +4,6 @@ const SUITS: Suit[] = ['♠', '♥', '♦', '♣'];
 const RANKS: Rank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 
 export const DEFAULT_SHOE_DECKS = 6;
-export const CUT_CARD_THRESHOLD = 78
 
 export function createDeck(): Card[] {
   return SUITS.flatMap((suit) => RANKS.map((rank) => ({ rank, suit })));
