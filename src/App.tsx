@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useReducer } from 'react';
 import { canDouble, createDealAction, gameReducer, initialState } from './engine/game';
-import { CUT_CARD_THRESHOLD, DEFAULT_SHOE_DECKS } from './engine/shoe';
+import { reshuffleThreshold } from './engine/rules';
+import { DEFAULT_SHOE_DECKS } from './engine/shoe';
 import { analyzeHand } from './engine/strategy';
 import { useAuth } from './AuthContext';
 import { loadHouseRules, saveHouseRules } from './houseRulesStorage';
@@ -109,7 +110,7 @@ export default function App() {
               {/* Top-Right: 3D Angled Matte Black 6-Deck Shoe */}
               <div
                 className="black-dealing-shoe"
-                title={`${cardsRemaining} / ${totalShoeCards} cards remaining in 6-deck shoe (Reshuffles at ${CUT_CARD_THRESHOLD})`}
+                title={`${cardsRemaining} / ${totalShoeCards} cards remaining in 6-deck shoe (Reshuffles at ${reshuffleThreshold(state.rules)})`}
               >
                 <div className="shoe-3d-body">
                   <div className="shoe-top-lid" />
