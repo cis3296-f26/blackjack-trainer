@@ -34,9 +34,9 @@ export default function App() {
   const analysis = useMemo(
   () =>
     state.phase === 'playerTurn'
-      ? analyzeHand(state.playerHand, state.dealerHand[0], state.rules.numDecks)
+      ? analyzeHand(state.playerHand, state.dealerHand[0], doubleAvailable, state.rules.numDecks)
       : null,
-  [state.phase, state.playerHand, state.dealerHand, state.rules.numDecks],
+  [state.phase, state.playerHand, state.dealerHand, doubleAvailable, state.rules.numDecks],
 );
 
   // Hooks above must run on every render, so the login gate comes after them
@@ -310,7 +310,7 @@ export default function App() {
         onHit={() => dispatch({ type: "HIT" })}
         onStand={() => dispatch({ type: "STAND" })}
         onDouble={() => dispatch({ type: "DOUBLE" })}
-        canDouble={canDouble(state)}
+        canDouble={doubleAvailable}
       />
     </main>
   );
