@@ -11,8 +11,8 @@ const RANK_VALUE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10];
 // so there are no slots for lower totals.
 const BUST = 5; // dealer outcome slots: 0..4 = 17..21, 5 = bust
 
-// Accepted actions so far
-export type Action = 'hit' | 'stand';
+//Accepted actions so far
+export type Action = 'hit' | 'stand' | 'double';
 
 export interface Outcome {
     ev: number; // expected profit per 1 unit bet: win = +1, lose = -1, push = 0
@@ -25,6 +25,7 @@ export interface Outcome {
 export interface Analysis {
     stand: Outcome;
     hit: Outcome; // assumes you play optimally after the first hit
+    double: Outcome | null; // one card then stand; EV is per original unit bet
     recommended: Action;
     dealerOutcomes: number[]; // P(dealer ends on 17,18,19,20,21,bust)
 }
@@ -164,7 +165,7 @@ function playerStep(hand: Total, counts: number[], ctx: Ctx): Step {
 
 // public API
 
-export function analyzeHand(playerHand: Card[], dealerUpcard: Card): Analysis {
+export function analyzeHand(playerHand: Card[], dealerUpcard: Card, canDouble = true): Analysis {
     const counts = Array<number>(13).fill(4);
     for (const c of [...playerHand, dealerUpcard]) counts[RANKS.indexOf(c.rank)]--;
 
@@ -174,11 +175,34 @@ export function analyzeHand(playerHand: Card[], dealerUpcard: Card): Analysis {
         playerMemo: new Map(),
     };
 
-    const step = playerStep(fromCards(playerHand), counts, ctx);
+    const hand = fromCards(playerHand);
+    const step = playerStep(hand, counts, ctx);
+    let double: Outcome | null = null;
+    if (canDouble && playerHand.length === 2) {
+        double = { ev: 0, win: 0, push: 0, lose: 0 };
+        const n = sum(counts);
+        for (let r = 0; r < RANKS.length; r++) {
+            if (counts[r] === 0) continue;
+            const p = counts[r] / n;
+            const next = addRank(hand, r);
+            counts[r]--;
+            const outcome = bestTotal(next) > 21
+                ? LOSS
+                : standOutcome(bestTotal(next), dealerDistribution(counts, ctx));
+            counts[r]++;
+            double.win += p * outcome.win;
+            double.push += p * outcome.push;
+            double.lose += p * outcome.lose;
+        }
+        double.ev = 2 * (double.win - double.lose);
+    }
+    let recommended: Action = step.hit.ev > step.stand.ev ? 'hit' : 'stand';
+    if (double && double.ev > step.best.ev) recommended = 'double';
     return {
         stand: step.stand,
         hit: step.hit,
-        recommended: step.hit.ev > step.stand.ev ? 'hit' : 'stand',
+        double,
+        recommended,
         dealerOutcomes: dealerDistribution(counts, ctx),
     };
 }

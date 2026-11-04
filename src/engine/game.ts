@@ -43,9 +43,14 @@ export const initialState: GameState = {
   doubled: false,
 };
 
-// v0.1 rule: one standard 52-card deck, freshly shuffled every hand
+// Supply a shuffled shoe when the current shoe reaches the cut card.
 export function createDealAction(): GameAction {
-  return { type: "DEAL", deck: shuffle(createDeck()) };
+  return { type: "DEAL", deck: shuffle(createShoe()) };
+}
+
+export function canDouble(state: GameState): boolean {
+  return state.phase === 'playerTurn' && state.playerHand.length === 2 &&
+    state.balance >= state.currentBet;
 }
 
 // Decides the outcome from the player's point of view once the hand is over
@@ -151,9 +156,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "DOUBLE": {
-      // Only allowed on the first two cards
-      if (state.phase !== "playerTurn" || state.playerHand.length !== 2)
-        return state;
+      if (!canDouble(state)) return state;
 
       const { card, rest } = draw(state.deck);
       const next = {
@@ -161,6 +164,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         deck: rest,
         playerHand: [...state.playerHand, card],
         doubled: true,
+        balance: state.balance - state.currentBet,
+        currentBet: state.currentBet * 2,
       };
 
       // Exactly one card, then the turn is over

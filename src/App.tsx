@@ -1,5 +1,5 @@
 import { useMemo, useReducer } from 'react';
-import { createDealAction, gameReducer, initialState } from './engine/game';
+import { canDouble, createDealAction, gameReducer, initialState } from './engine/game';
 import { analyzeHand } from './engine/strategy';
 import { useAuth } from './AuthContext';
 
@@ -14,21 +14,23 @@ import AuthPage from './components/AuthPage';
 export default function App() {
   const { currentUser, logout }= useAuth();
 
-  if (!currentUser) {
-    return <AuthPage onSuccess={() => {}} />;
-  }
   const [state, dispatch] = useReducer(gameReducer, initialState);
 
   // The dealer's hole card stays face down until the player stands or busts
   const hideHoleCard = state.phase === "playerTurn";
+  const doubleAvailable = canDouble(state);
 
   const analysis = useMemo(
   () =>
     state.phase === 'playerTurn'
-      ? analyzeHand(state.playerHand, state.dealerHand[0])
+      ? analyzeHand(state.playerHand, state.dealerHand[0], doubleAvailable)
       : null,
-  [state.phase, state.playerHand, state.dealerHand],
+  [state.phase, state.playerHand, state.dealerHand, doubleAvailable],
 );
+
+  if (!currentUser) {
+    return <AuthPage onSuccess={() => {}} />;
+  }
 
   return (
     <main className="table">
@@ -42,7 +44,6 @@ export default function App() {
         </button>
       </div>
 
-      <Hint />
       <h1 className="table__title">Blackjack Trainer</h1>
 
       {state.phase === "idle" ? (
@@ -71,6 +72,7 @@ export default function App() {
         onHit={() => dispatch({ type: "HIT" })}
         onStand={() => dispatch({ type: "STAND" })}
         onDouble={() => dispatch({ type: "DOUBLE" })}
+        canDouble={doubleAvailable}
       />
     </main>
   );

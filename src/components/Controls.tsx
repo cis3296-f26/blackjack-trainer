@@ -8,6 +8,7 @@ interface ControlsProps {
   balance: number;
   currentBet: number;
   bailoutTriggered?: boolean;
+  canDouble: boolean;
   onPlaceBet: (amount: ChipValue) => void;
   onClearBet: () => void;
   onDeal: () => void;
@@ -17,7 +18,7 @@ interface ControlsProps {
 }
 
 // Action buttons. Each one is enabled only in the phase where it makes sense.
-export default function Controls({ phase, balance = 500, currentBet = 0, bailoutTriggered = false, onPlaceBet, onClearBet,onDeal, onHit, onStand }: ControlsProps) {
+export default function Controls({ phase, balance = 500, currentBet = 0, bailoutTriggered = false, canDouble, onPlaceBet, onClearBet,onDeal, onHit, onStand, onDouble }: ControlsProps) {
   const isPlayerTurn = phase === 'playerTurn';
   const canBet = phase === 'idle' || phase === 'done';
   const canDeal = canBet && currentBet > 0;
@@ -80,6 +81,9 @@ export default function Controls({ phase, balance = 500, currentBet = 0, bailout
         </button>
         <button type="button" onClick={onStand} disabled={!isPlayerTurn}>
           Stand
+        </button>
+        <button type="button" onClick={onDouble} disabled={!canDouble}>
+          Double
         </button>
       </div>
     </div>
