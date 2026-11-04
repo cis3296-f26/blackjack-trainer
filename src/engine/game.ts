@@ -1,7 +1,7 @@
-import type { Card } from './types';
-import { createShoe, CUT_CARD_THRESHOLD, draw, shuffle } from './shoe';
-import { handValue, isBlackjack, isBust } from './hand';
-import { INITIAL_BALANCE, BANKRUPT_BAILOUT, type ChipValue } from './types';
+import type { Card } from "./types";
+import { createShoe, CUT_CARD_THRESHOLD, draw, shuffle } from "./shoe";
+import { handValue, isBlackjack, isBust } from "./hand";
+import { INITIAL_BALANCE, BANKRUPT_BAILOUT, type ChipValue } from "./types";
 
 // 'dealerTurn' is part of the model, but for now the dealer plays instantly inside STAND,
 // so the state never rests in it. It's there for later (e.g. animating dealer draws).
@@ -19,19 +19,20 @@ export interface GameState {
   currentBet: number;
   bailoutTriggered?: boolean;
   doubled: boolean;
+  lastbet: number;
   freePlay: boolean; // no chips at stake; the bankroll is left untouched until betting resumes
 }
 
 // DEAL carries its own shuffled deck so the reducer stays pure (no randomness inside it).
 // Use createDealAction() in the UI; tests can pass a stacked deck instead.
 export type GameAction =
-  | { type: 'DEAL'; deck: Card[] }
-  | { type: 'HIT' }
-  | { type: 'STAND' }
-  | { type: 'DOUBLE' }
-  | { type: 'PLACE_BET'; amount: ChipValue }
-  | { type: 'CLEAR_BET' }
-  | { type: 'SET_FREE_PLAY'; enabled: boolean };
+  | { type: "DEAL"; deck: Card[] }
+  | { type: "HIT" }
+  | { type: "STAND" }
+  | { type: "DOUBLE" }
+  | { type: "PLACE_BET"; amount: ChipValue }
+  | { type: "CLEAR_BET" }
+  | { type: "SET_FREE_PLAY"; enabled: boolean };
 
 export const initialState: GameState = {
   deck: [],
@@ -43,6 +44,7 @@ export const initialState: GameState = {
   currentBet: 0,
   bailoutTriggered: false,
   doubled: false,
+  lastbet: 0,
   freePlay: false,
 };
 
@@ -84,13 +86,19 @@ function finish(state: GameState): GameState {
 
   // Free play has nothing to settle, so the balance stays as it was
   if (state.freePlay) {
-    return { ...state, phase: "done", result, bailoutTriggered: false };
+    return {
+      ...state,
+      phase: "done",
+      result,
+      lastbet: 0,
+      bailoutTriggered: false,
+    };
   }
 
   const { nextBalance, bailoutTriggered } = settleRoundBet(
     state.balance,
     state.currentBet,
-    result
+    result,
   );
 
   return {
@@ -98,6 +106,7 @@ function finish(state: GameState): GameState {
     phase: "done",
     result,
     balance: nextBalance,
+    lastbet: state.currentBet,
     currentBet: 0,
     bailoutTriggered,
   };
@@ -125,7 +134,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
       // Deal in casino order: player, dealer, player, dealer
       const isStackedTestDeck = action.deck.length < CUT_CARD_THRESHOLD;
-      const needsReshuffle = state.deck.length < CUT_CARD_THRESHOLD || isStackedTestDeck;
+      const needsReshuffle =
+        state.deck.length < CUT_CARD_THRESHOLD || isStackedTestDeck;
       let deck = needsReshuffle ? action.deck : state.deck;
       const dealt: Card[] = [];
       for (let i = 0; i < 4; i++) {
@@ -143,6 +153,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         balance: state.balance,
         currentBet: state.currentBet,
         bailoutTriggered: state.bailoutTriggered,
+        lastbet: state.lastbet,
         doubled: false,
         freePlay: state.freePlay,
       };
@@ -183,7 +194,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         playerHand: [...state.playerHand, card],
         doubled: true,
         // Free play has no bet to double
-        balance: state.freePlay ? state.balance : state.balance - state.currentBet,
+        balance: state.freePlay
+          ? state.balance
+          : state.balance - state.currentBet,
         currentBet: state.freePlay ? state.currentBet : state.currentBet * 2,
       };
 
@@ -209,7 +222,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "CLEAR_BET": {
-      if ((state.phase !== "idle" && state.phase !== "done") || state.freePlay) {
+      if (
+        (state.phase !== "idle" && state.phase !== "done") ||
+        state.freePlay
+      ) {
         return state;
       }
       return {
@@ -249,7 +265,7 @@ export const initialBettingState = {
 export function settleRoundBet(
   balance: number,
   currentBet: number,
-  outcome: "blackjack" | "win" | "push" | "lose"
+  outcome: "blackjack" | "win" | "push" | "lose",
 ): { nextBalance: number; bailoutTriggered: boolean } {
   let nextBalance = balance;
 
