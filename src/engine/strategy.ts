@@ -11,7 +11,7 @@ const RANK_VALUE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10];
 // so there are no slots for lower totals.
 const BUST = 5; // dealer outcome slots: 0..4 = 17..21, 5 = bust
 
-//Accepted actions so far
+// Accepted actions so far
 export type Action = 'hit' | 'stand';
 
 export interface Outcome {
@@ -29,7 +29,7 @@ export interface Analysis {
     dealerOutcomes: number[]; // P(dealer ends on 17,18,19,20,21,bust)
 }
 
-//Math portion
+// Math portion
 
 interface Total {
     hard: number;
@@ -59,7 +59,7 @@ interface Ctx {
 const sum = (counts: number[]) => counts.reduce((a, b) => a + b, 0);
 const key = (t: Total, counts: number[]) => `${t.hard}|${t.hasAce}|${counts.join(',')}`;
 
-// ---- dealer ----
+// dealer
 
 // Distribution of the dealer's final result, starting from `hand` and drawing from `counts`
 function dealerFrom(hand: Total, counts: number[], ctx: Ctx): number[] {
@@ -112,7 +112,7 @@ function dealerDistribution(counts: number[], ctx: Ctx): number[] {
     return dist;
 }
 
-//player 
+// player 
 
 const LOSS: Outcome = { ev: -1, win: 0, push: 0, lose: 1 };
 
@@ -162,7 +162,7 @@ function playerStep(hand: Total, counts: number[], ctx: Ctx): Step {
     return step;
 }
 
-//public API
+// public API
 
 export function analyzeHand(playerHand: Card[], dealerUpcard: Card): Analysis {
     const counts = Array<number>(13).fill(4);
