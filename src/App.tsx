@@ -1,4 +1,4 @@
-import { useMemo, useReducer } from 'react';
+import { useMemo, useReducer, useState } from 'react';
 import { createDealAction, gameReducer, initialState } from './engine/game';
 import { analyzeHand } from './engine/strategy';
 import { useAuth } from './AuthContext';
@@ -9,26 +9,59 @@ import Hint from './components/Hint';
 import ResultBanner from './components/ResultBanner';
 import './App.css';
 import AuthPage from './components/AuthPage';
+import MainMenu from './components/MainMenu';
 
 // Top-level screen: owns the game state and passes pieces of it down to components
 export default function App() {
   const { currentUser, logout }= useAuth();
   const [state, dispatch] = useReducer(gameReducer, initialState);
+  const [inSimulation, setInSimulation] = useState(false);
+  const [inTrainer, setInTrainer] = useState(false);
 
   // The dealer's hole card stays face down until the player stands or busts
   const hideHoleCard = state.phase === "playerTurn";
 
   const analysis = useMemo(
-  () =>
-    state.phase === 'playerTurn'
-      ? analyzeHand(state.playerHand, state.dealerHand[0])
-      : null,
-  [state.phase, state.playerHand, state.dealerHand],
-);
+    () =>
+      state.phase === 'playerTurn'
+        ? analyzeHand(state.playerHand, state.dealerHand[0])
+        : null,
+    [state.phase, state.playerHand, state.dealerHand],
+  );
+
+  const trainerClicked = () => {
+    setInSimulation(false);
+    setInTrainer(true);
+  }
 
   // Hooks above must run on every render, so the login gate comes after them
   if (!currentUser) {
     return <AuthPage onSuccess={() => {}} />;
+  }
+
+  if (!inSimulation) {
+    return (
+      <>
+        <div className="app__user-bar">
+          <span className="app__user-name">
+            {currentUser.displayName || currentUser.email}
+          </span>
+          <button type="button" className="app__logout" onClick={logout}>
+            Log Out
+          </button>
+        </div>
+        <MainMenu 
+          onStartSimulation={() => setInSimulation(true)} 
+          onStartTrainer={() => trainerClicked}
+         />
+      </>
+    )
+  }
+
+  if (inTrainer) {
+    return (
+      <div>hello</div>
+    )
   }
 
   return (
