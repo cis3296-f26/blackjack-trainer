@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer } from 'react';
 import { canDouble, createDealAction, gameReducer, initialState } from './engine/game';
-import { CUT_CARD_THRESHOLD, DEFAULT_SHOE_DECKS } from './engine/shoe';
+import { reshuffleThreshold } from './engine/rules';
 import { analyzeHand } from './engine/strategy';
 import { useAuth } from './AuthContext';
 import { loadHouseRules, saveHouseRules } from './houseRulesStorage';
@@ -33,9 +33,9 @@ export default function App() {
   const analysis = useMemo(
   () =>
     state.phase === 'playerTurn'
-      ? analyzeHand(state.playerHand, state.dealerHand[0], state.rules.numDecks)
+      ? analyzeHand(state.playerHand, state.dealerHand[0], state.rules.numDecks, doubleAvailable)
       : null,
-  [state.phase, state.playerHand, state.dealerHand, state.rules.numDecks],
+  [state.phase, state.playerHand, state.dealerHand, state.rules.numDecks, doubleAvailable],
 );
 
   // Hooks above must run on every render, so the login gate comes after them
@@ -43,7 +43,7 @@ export default function App() {
     return <AuthPage onSuccess={() => { }} />;
   }
 
-  const totalShoeCards = DEFAULT_SHOE_DECKS * 52; // 312
+  const totalShoeCards = state.rules.numDecks * 52;
   const cardsRemaining = state.deck.length > 0 ? state.deck.length : totalShoeCards;
 
   // Only count cards as discarded after the round is completed/settled
@@ -110,7 +110,7 @@ export default function App() {
               {/* Top-Right: 3D Angled Matte Black 6-Deck Shoe */}
               <div
                 className="black-dealing-shoe"
-                title={`${cardsRemaining} / ${totalShoeCards} cards remaining in 6-deck shoe (Reshuffles at ${CUT_CARD_THRESHOLD})`}
+                title={`${cardsRemaining} / ${totalShoeCards} cards remaining in ${state.rules.numDecks}-deck shoe (Reshuffles at ${reshuffleThreshold(state.rules)})`}
               >
                 <div className="shoe-3d-body">
                   <div className="shoe-top-lid" />
@@ -120,7 +120,7 @@ export default function App() {
                         className="shoe-visible-cards"
                         style={{ height: `${shoePercent}%` }}
                       />
-                      <div className="shoe-cut-marker" title="Cut Card (75%)" />
+                      <div className="shoe-cut-marker" title={`Cut Card (${Math.round(state.rules.penetration * 100)}%)`} />
                     </div>
                   </div>
                 </div>
@@ -309,7 +309,7 @@ export default function App() {
         onHit={() => dispatch({ type: "HIT" })}
         onStand={() => dispatch({ type: "STAND" })}
         onDouble={() => dispatch({ type: "DOUBLE" })}
-        canDouble={canDouble(state)}
+        canDouble={doubleAvailable}
       />
     </main>
   );

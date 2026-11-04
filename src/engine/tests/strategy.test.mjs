@@ -28,13 +28,13 @@ test('doubling stops after one card even when hitting again would improve the ha
 });
 
 test('unavailable double falls back to a legal action', () => {
-    const analysis = analyzeHand([card('5'), card('6')], card('6'), false);
+    const analysis = analyzeHand([card('5'), card('6')], card('6'), 1, false);
     assert.equal(analysis.double, null);
     assert.equal(analysis.recommended, 'hit');
 });
 
 test('double is unavailable after a hit even when explicitly enabled', () => {
-    const analysis = analyzeHand([card('2'), card('3'), card('6')], card('6'), true);
+    const analysis = analyzeHand([card('2'), card('3'), card('6')], card('6'), 1, true);
     assert.equal(analysis.double, null);
     assert.notEqual(analysis.recommended, 'double');
 });
