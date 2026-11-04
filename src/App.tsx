@@ -155,13 +155,7 @@ export default function App() {
 
               {/* Insurance band */}
               <path
-                d="
-      M 110 250
-      Q 550 550 990 250
-      L 1020 300
-      Q 550 610 80 300
-      Z
-    "
+                d="M 110 250 Q 550 550 990 250 L 1020 300 Q 550 610 80 300 Z"
                 fill="rgba(0, 35, 18, 0.10)"
                 stroke="#dddccc"
                 strokeWidth="3"
