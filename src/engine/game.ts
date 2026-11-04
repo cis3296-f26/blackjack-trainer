@@ -256,7 +256,7 @@ export function settleRoundBet(
   switch (outcome) {
     case "blackjack":
       // Blackjack pays 3:2 (original bet returned + 1.5x winnings)
-      nextBalance += currentBet + Math.floor(currentBet * 1.5);
+      nextBalance += currentBet + currentBet * 1.5;
       break;
     case "win":
       // Standard win pays 1:1 (original bet returned + 1x winnings)
