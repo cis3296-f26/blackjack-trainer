@@ -46,3 +46,131 @@
 .app__logout:hover {
   background: #ffd75e;
 }
+
+/* Expand the container width when in Trainer mode */
+.table--trainer {
+  max-width: 1150px;
+  margin: 0 auto;
+}
+
+.trainer-layout {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .trainer-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.trainer-coach {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.45);
+  border-left: 4px solid #f5c542;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.trainer-feedback {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.trainer-feedback--correct {
+  background: #2e7d32;
+  border: 2px solid #a5d6a7;
+  color: #fff;
+}
+
+.trainer-feedback--incorrect {
+  background: #8e2424;
+  border: 2px solid #ef9a9a;
+  color: #fff;
+}
+
+.trainer-guide__card {
+  padding: 1.25rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  max-height: 82vh;
+  overflow-y: auto;
+}
+
+.trainer-guide__heading {
+  margin: 0 0 0.75rem;
+  font-size: 1.3rem;
+  color: #f5c542;
+}
+
+.trainer-guide__intro {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  opacity: 0.95;
+}
+
+.trainer-guide__list {
+  margin: 0 0 1rem;
+  padding-left: 1.2rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.trainer-guide__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.legend-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.legend-badge--h {
+  background: #fff;
+  color: #111;
+}
+
+.legend-badge--s {
+  background: #f5c542;
+  color: #111;
+}
+
+.legend-badge--d {
+  background: #10b981;
+  color: #111;
+}
+
+.legend-badge--ds {
+  background: #38bdf8;
+  color: #111;
+}
+
+.trainer-guide__chart-wrapper {
+  display: flex;
+  justify-content: center;
+}
+
+.trainer-guide__chart-img {
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
