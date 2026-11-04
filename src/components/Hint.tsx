@@ -52,10 +52,14 @@ export default function Hint({ analysis }: HintProps) {
           {analysis ? (
             <>
               <p className="hint__text">
-                Recommended: <strong>{analysis.recommended === 'hit' ? 'Hit' : 'Stand'}</strong>
+                Recommended: <strong>{{ hit: 'Hit', stand: 'Stand', double: 'Double' }[analysis.recommended]}</strong>
               </p>
               <Row label="Hit" o={analysis.hit} best={analysis.recommended === 'hit'} />
               <Row label="Stand" o={analysis.stand} best={analysis.recommended === 'stand'} />
+              {analysis.double && (
+                <Row label="Double" o={analysis.double} best={analysis.recommended === 'double'} />
+              )}
+              <p className="hint__text">EV is profit per original unit bet.</p>
             </>
           ) : (
             <p className="hint__text">Hints are available during your turn.</p>
