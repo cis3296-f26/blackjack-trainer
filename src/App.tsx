@@ -29,6 +29,7 @@ export default function App() {
 
   // The dealer's hole card stays face down until the player stands or busts
   const hideHoleCard = state.phase === "playerTurn";
+  const doubleAvailable = canDouble(state);
 
   const analysis = useMemo(
   () =>
