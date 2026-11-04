@@ -39,3 +39,5 @@ How to play:
 2. Click Hit to take another card, or Stand to keep your hand.
 3. The dealer then reveals their hidden card and draws until reaching 17 or more.
 4. The result appears: win, lose, push (tie), or blackjack. Click New Hand to play again.
+
+To match the rules of a particular casino, click the ⚙ (House Settings) button in the top-left corner between hands. There you can choose the number of decks (1, 2, 4, 6, or 8) and how deep the dealer deals into the shoe before reshuffling. The panel also lists the table rules that are currently fixed.

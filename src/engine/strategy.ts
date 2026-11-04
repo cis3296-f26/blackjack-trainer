@@ -165,8 +165,8 @@ function playerStep(hand: Total, counts: number[], ctx: Ctx): Step {
 
 // public API
 
-export function analyzeHand(playerHand: Card[], dealerUpcard: Card, canDouble = true): Analysis {
-    const counts = Array<number>(13).fill(4);
+export function analyzeHand(playerHand: Card[], dealerUpcard: Card, numDecks = 1): Analysis {
+    const counts = Array<number>(13).fill(4 * numDecks);
     for (const c of [...playerHand, dealerUpcard]) counts[RANKS.indexOf(c.rank)]--;
 
     const ctx: Ctx = {
