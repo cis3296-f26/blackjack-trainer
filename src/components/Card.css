@@ -1,22 +1,106 @@
 .card {
-  width: 60px;
-  height: 84px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  background: #fff;
-  color: #111;
-  font-size: 1.4rem;
+  position: relative;
+  flex: 0 0 auto;
+  width: clamp(34px, 6cqw, 72px);
+  aspect-ratio: 5 / 7;
+  height: auto;
+  overflow: hidden;
+  border: 1px solid #d5d1c6;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #fffef9, #f0eee6);
+  color: #17191a;
+  font-family: Georgia, 'Times New Roman', serif;
   font-weight: bold;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  line-height: 1;
+  box-shadow:
+    1px 2px 1px rgb(0 0 0 / 25%),
+    3px 5px 7px rgb(0 0 0 / 30%);
 }
 
 .card--red {
-  color: #c62828;
+  color: #bf1823;
+}
+
+.card__corner {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font-size: clamp(8px, 1.2cqw, 14px);
+}
+
+.card__corner--top {
+  top: 5%;
+  left: 6%;
+}
+
+.card__corner--bottom {
+  right: 6%;
+  bottom: 5%;
+  transform: rotate(180deg);
+}
+
+.card__center {
+  position: absolute;
+  inset: 16% 20%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card__pip {
+  position: absolute;
+  font-size: clamp(9px, 1.7cqw, 21px);
+  transform: translate(-50%, -50%);
+}
+
+.card__pip--inverted {
+  transform: translate(-50%, -50%) rotate(180deg);
+}
+
+.card__ace {
+  font-size: clamp(23px, 3.7cqw, 44px);
+}
+
+.card__court {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  border: 1px solid currentColor;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      transparent 0 5px,
+      rgb(171 135 54 / 12%) 5px 7px
+    ),
+    #f3e8ca;
+  font-size: clamp(16px, 2.8cqw, 33px);
+}
+
+.card__court span:last-child {
+  font-size: 0.65em;
 }
 
 .card--back {
-  background: repeating-linear-gradient(45deg, #1e3a8a, #1e3a8a 6px, #2b4fb8 6px, #2b4fb8 12px);
-  border: 3px solid #fff;
+  border: 3px solid #f4f0e6;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      transparent 0 3px,
+      rgb(255 255 255 / 50%) 3px 4px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      #9e2535 0 3px,
+      #e3b4b9 3px 4px
+    );
+  box-shadow:
+    inset 0 0 0 1px #8d2030,
+    2px 4px 6px rgb(0 0 0 / 35%);
 }

@@ -30,7 +30,11 @@ export default function Hand({ title, cards, hideHoleCard = false }: HandProps) 
       </h2>
       <div className="hand__cards">
         {cards.map((card, i) => (
-          <Card key={`${card.rank}${card.suit}`} card={card} faceDown={hideHoleCard && i === 1} />
+          <Card
+            key={`${card.rank}-${card.suit}-${i}`}
+            card={card}
+            faceDown={hideHoleCard && i === 1}
+          />
         ))}
       </div>
     </section>
