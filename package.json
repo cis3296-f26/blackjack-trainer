@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "test": "node --test src/engine/tests/*.test.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
@@ -23,7 +24,11 @@
     "typescript": "~6.0.3",
     "vite": "^8.3.4"
   },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.5"
+  },
   "allowScripts": {
-    "fsevents@2.3.3": true
+    "fsevents@2.3.3": true,
+    "protobufjs@7.6.6": false
   }
 }
