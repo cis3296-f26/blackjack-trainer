@@ -1,16 +1,21 @@
-import { useMemo, useReducer } from 'react';
-import { canDouble, createDealAction, gameReducer, initialState } from './engine/game';
-import { CUT_CARD_THRESHOLD, DEFAULT_SHOE_DECKS } from './engine/shoe';
-import { analyzeHand } from './engine/strategy';
-import { useAuth } from './AuthContext';
+import { useMemo, useReducer } from "react";
+import {
+  canDouble,
+  createDealAction,
+  gameReducer,
+  initialState,
+} from "./engine/game";
+import { CUT_CARD_THRESHOLD, DEFAULT_SHOE_DECKS } from "./engine/shoe";
+import { analyzeHand } from "./engine/strategy";
+import { useAuth } from "./AuthContext";
 
-import Controls from './components/Controls';
-import Hand from './components/Hand';
-import Hint from './components/Hint';
-import ResultBanner from './components/ResultBanner';
-import './App.css';
-import AuthPage from './components/AuthPage';
-
+import Controls from "./components/Controls";
+import Hand from "./components/Hand";
+import Hint from "./components/Hint";
+import ResultBanner from "./components/ResultBanner";
+import "./App.css";
+import AuthPage from "./components/AuthPage";
+import StatsPanel from "./components/StatsPanel";
 // Top-level screen: owns the game state and passes pieces of it down to components
 export default function App() {
   const { currentUser, logout } = useAuth();
@@ -21,7 +26,7 @@ export default function App() {
 
   const analysis = useMemo(
     () =>
-      state.phase === 'playerTurn'
+      state.phase === "playerTurn"
         ? analyzeHand(state.playerHand, state.dealerHand[0])
         : null,
     [state.phase, state.playerHand, state.dealerHand],
@@ -29,20 +34,31 @@ export default function App() {
 
   // Hooks above must run on every render, so the login gate comes after them
   if (!currentUser) {
-    return <AuthPage onSuccess={() => { }} />;
+    return <AuthPage onSuccess={() => {}} />;
   }
 
   const totalShoeCards = DEFAULT_SHOE_DECKS * 52; // 312
-  const cardsRemaining = state.deck.length > 0 ? state.deck.length : totalShoeCards;
+  const cardsRemaining =
+    state.deck.length > 0 ? state.deck.length : totalShoeCards;
 
   // Only count cards as discarded after the round is completed/settled
-  const cardsUsedInCurrentHand = state.phase !== 'idle' ? state.playerHand.length + state.dealerHand.length : 0;
-  const discardedCards = state.phase === 'done'
-    ? totalShoeCards - cardsRemaining
-    : Math.max(0, (totalShoeCards - cardsRemaining) - cardsUsedInCurrentHand);
+  const cardsUsedInCurrentHand =
+    state.phase !== "idle"
+      ? state.playerHand.length + state.dealerHand.length
+      : 0;
+  const discardedCards =
+    state.phase === "done"
+      ? totalShoeCards - cardsRemaining
+      : Math.max(0, totalShoeCards - cardsRemaining - cardsUsedInCurrentHand);
 
-  const shoePercent = Math.max(0, Math.min(100, Math.round((cardsRemaining / totalShoeCards) * 100)));
-  const discardPercent = Math.max(4, Math.min(100, Math.round((discardedCards / totalShoeCards) * 100)));
+  const shoePercent = Math.max(
+    0,
+    Math.min(100, Math.round((cardsRemaining / totalShoeCards) * 100)),
+  );
+  const discardPercent = Math.max(
+    4,
+    Math.min(100, Math.round((discardedCards / totalShoeCards) * 100)),
+  );
 
   return (
     <main className="table">
@@ -61,12 +77,13 @@ export default function App() {
       <div className="casino-scene">
         <div className="casino-table-wood">
           <div className="casino-table-felt">
-
             {/* 1. TOP ROW: DISCARD HOLDER, DEALER CHIP RACK, & BLACK SHOE */}
             <div className="casino-top-equipment">
-
               {/* Top-Left: Clear Acrylic Discard Holder */}
-              <div className="discard-holder" title={`${discardedCards} cards discarded`}>
+              <div
+                className="discard-holder"
+                title={`${discardedCards} cards discarded`}
+              >
                 <div className="discard-acrylic-box">
                   <div
                     className="discard-card-stack"
@@ -74,7 +91,9 @@ export default function App() {
                   />
                 </div>
                 <div className="discard-wood-base" />
-                <span className="equipment-badge">{discardedCards} Discarded</span>
+                <span className="equipment-badge">
+                  {discardedCards} Discarded
+                </span>
               </div>
 
               {/* Top-Center: 10-Tube Dealer Chip Rack */}
@@ -122,18 +141,9 @@ export default function App() {
               aria-hidden="true"
             >
               <defs>
-                <path
-                  id="blackjackCurve"
-                  d="M 170 180 Q 550 430 930 180"
-                />
-                <path
-                  id="dealerRulesCurve"
-                  d="M 145 222 Q 550 490 955 222"
-                />
-                <path
-                  id="insuranceCurve"
-                  d="M 95 290 Q 550 580 1005 290"
-                />
+                <path id="blackjackCurve" d="M 170 180 Q 550 430 930 180" />
+                <path id="dealerRulesCurve" d="M 145 222 Q 550 490 955 222" />
+                <path id="insuranceCurve" d="M 95 290 Q 550 580 1005 290" />
               </defs>
 
               {/* Ribbon tails */}
@@ -211,7 +221,7 @@ export default function App() {
 
             {/* 3. DEALER HAND ZONE */}
             <div className="dealer-zone">
-              {state.phase !== 'idle' && (
+              {state.phase !== "idle" && (
                 <Hand
                   title="Dealer"
                   cards={state.dealerHand}
@@ -222,11 +232,11 @@ export default function App() {
 
             {/* 4. STATUS / HINT / RESULT BANNER */}
             <div className="table-center-status">
-              {state.phase === 'idle' && (
+              {state.phase === "idle" && (
                 <p className="table__hint">
                   {state.freePlay
-                    ? 'Press Deal to start a hand.'
-                    : 'Place a bet with the chips below, then press Deal.'}
+                    ? "Press Deal to start a hand."
+                    : "Place a bet with the chips below, then press Deal."}
                 </p>
               )}
               <ResultBanner result={state.result} />
@@ -234,14 +244,18 @@ export default function App() {
 
             {/* 5. PLAYER HAND ZONE */}
             <div className="player-zone" data-result={state.result}>
-              {state.phase !== 'idle' && (
+              {state.phase !== "idle" && (
                 <Hand
                   title={
-                    state.result === 'win' ? 'You win!' :
-                      state.result === 'blackjack' ? 'Blackjack! You win!' :
-                        state.result === 'lose' ? 'You lose' :
-                          state.result === 'push' ? 'Push — tie' :
-                            'You'
+                    state.result === "win"
+                      ? "You win!"
+                      : state.result === "blackjack"
+                        ? "Blackjack! You win!"
+                        : state.result === "lose"
+                          ? "You lose"
+                          : state.result === "push"
+                            ? "Push — tie"
+                            : "You"
                   }
                   cards={state.playerHand}
                 />
@@ -250,13 +264,23 @@ export default function App() {
 
             {/* 6. BOTTOM BETTING BOXES */}
             <div className="betting-boxes-row">
-              <div className="betting-rect-box betting-rect-box--far-left" aria-hidden="true" />
-              <div className="betting-rect-box betting-rect-box--far-right" aria-hidden="true" />
-              <div className="betting-rect-box betting-rect-box--left" aria-hidden="true" />
+              <div
+                className="betting-rect-box betting-rect-box--far-left"
+                aria-hidden="true"
+              />
+              <div
+                className="betting-rect-box betting-rect-box--far-right"
+                aria-hidden="true"
+              />
+              <div
+                className="betting-rect-box betting-rect-box--left"
+                aria-hidden="true"
+              />
 
               <div
-                className={`betting-rect-box betting-rect-box--center ${state.currentBet > 0 ? 'betting-rect-box--active' : ''
-                  }`}
+                className={`betting-rect-box betting-rect-box--center ${
+                  state.currentBet > 0 ? "betting-rect-box--active" : ""
+                }`}
               >
                 {!state.freePlay && state.currentBet > 0 ? (
                   <div className="box-chip-cluster">
@@ -268,14 +292,16 @@ export default function App() {
                   </div>
                 ) : (
                   <span className="betting-box-label">
-                    {state.freePlay ? 'FREE PLAY' : 'BET HERE'}
+                    {state.freePlay ? "FREE PLAY" : "BET HERE"}
                   </span>
                 )}
               </div>
 
-              <div className="betting-rect-box betting-rect-box--right" aria-hidden="true" />
+              <div
+                className="betting-rect-box betting-rect-box--right"
+                aria-hidden="true"
+              />
             </div>
-
           </div>
         </div>
       </div>
@@ -286,7 +312,9 @@ export default function App() {
         currentBet={state.currentBet}
         bailoutTriggered={state.bailoutTriggered}
         freePlay={state.freePlay}
-        onToggleFreePlay={(enabled) => dispatch({ type: "SET_FREE_PLAY", enabled })}
+        onToggleFreePlay={(enabled) =>
+          dispatch({ type: "SET_FREE_PLAY", enabled })
+        }
         onPlaceBet={(amount) => dispatch({ type: "PLACE_BET", amount })}
         onClearBet={() => dispatch({ type: "CLEAR_BET" })}
         onDeal={() => dispatch(createDealAction())}
@@ -295,6 +323,7 @@ export default function App() {
         onDouble={() => dispatch({ type: "DOUBLE" })}
         canDouble={canDouble(state)}
       />
+      <StatsPanel stats={state.stats} />
     </main>
   );
 }
