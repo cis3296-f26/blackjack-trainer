@@ -52,6 +52,9 @@ export function profit_hand(hand: hand_info): number {
       return 0;
     case "lose":
       return -hand.bet;
+    case "surrender":
+      // Half the bet comes back, rounded down like the table settles it
+      return Math.floor(hand.bet / 2) - hand.bet;
   }
 }
 

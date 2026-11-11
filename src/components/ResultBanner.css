@@ -3,7 +3,7 @@
 .result-banner__amount { color: var(--gold); font-variant-numeric: tabular-nums; }
 .result-banner p { margin: 0.25rem 0; font-size: 0.9rem; }
 .result-banner .result-banner__detail { font-size: 0.8rem; color: var(--muted); }
-.result-banner--lose { border-color: #f3a9a1; }
-.result-banner--lose .result-banner__amount { color: #ffc4bc; }
+.result-banner--lose, .result-banner--surrender { border-color: #f3a9a1; }
+.result-banner--lose .result-banner__amount, .result-banner--surrender .result-banner__amount { color: #ffc4bc; }
 .result-banner--push { border-color: #bfcec5; }
 .result-banner__bailout { color: #ffe6a0; }

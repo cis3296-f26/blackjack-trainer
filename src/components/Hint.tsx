@@ -65,6 +65,7 @@ export default function Hint({ state }: { state: GameState }) {
           <dt>Stand</dt><dd>Keep your total and let the dealer play.</dd>
           <dt>Double</dt><dd>Double your bet, take exactly one card, then stand. Available on your first two cards with enough chips. In Free Play, no chips are needed.</dd>
           <dt>Split</dt><dd>Turn a pair into two hands, each with its own bet. Allowed once per hand; any two ten-value cards count as a pair.</dd>
+          <dt>Surrender</dt><dd>Give up your first two cards and get half your bet back. Not available after a hit or a split, or when the dealer has blackjack.</dd>
           <dt>Soft total</dt><dd>A hand with an ace counting as 11.</dd>
           <dt>Push</dt><dd>A tie. Your bet is returned.</dd>
         </dl>

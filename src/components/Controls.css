@@ -12,7 +12,7 @@
 .bankroll-hud strong { color: var(--cream); font-size: 1rem; margin-left: 0.2rem; font-variant-numeric: tabular-nums; }
 .controls { display: flex; flex-wrap: wrap; gap: 0.65rem; }
 .controls > button { flex: 1 1 auto; }
-.controls--play { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+.controls--play { display: grid; grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr)); }
 .controls--play > button { padding-inline: 0.3rem; }
 .action-dock > .button { width: 100%; }
 .action-dock__help { margin: 0.6rem 0 0; color: var(--muted); font-size: 0.8rem; }

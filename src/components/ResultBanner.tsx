@@ -2,21 +2,7 @@ import type { GameState } from '../engine/game';
 import { resultReason } from '../engine/presentation';
 import './ResultBanner.css';
 
-interface ResultBannerProps {
-  result: Result | null;
-}
-
-const MESSAGES: Record<Result, string> = {
-  blackjack: 'Blackjack! You win.',
-  win: 'You win!',
-  lose: 'You lose.',
-  push: "Push. It's a tie.",
-  surrender: 'You surrendered.',
-};
-
-// Shows the outcome once the hand is over; renders nothing while a hand is in play
-export default function ResultBanner({ result }: ResultBannerProps) {
-  if (result === null) return null;
+const messages = { blackjack: 'Blackjack!', win: 'You win!', lose: 'You lose', push: 'Push — a tie', surrender: 'You surrendered' };
 
 export default function ResultBanner({ state }: { state: GameState }) {
   if (state.phase !== 'done' || !state.result || !state.lastRound) return null;

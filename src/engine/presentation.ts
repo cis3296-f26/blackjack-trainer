@@ -22,7 +22,7 @@ export function shoeStatus(state: GameState) {
   };
 }
 
-const splitOutcome = { win: 'wins', lose: 'loses', push: 'pushes', blackjack: 'wins' } as const;
+const splitOutcome = { win: 'wins', lose: 'loses', push: 'pushes', blackjack: 'wins', surrender: 'surrenders' } as const;
 
 export function resultReason(state: GameState): string {
   if (state.splitHands.length > 0) {
@@ -32,6 +32,9 @@ export function resultReason(state: GameState): string {
   }
   const player = handValue(state.playerHand).total;
   const dealer = handValue(state.dealerHand).total;
+  if (state.result === 'surrender') {
+    return `You surrendered your ${player}${state.freePlay ? '' : ' and got half your bet back'}.`;
+  }
   if (isBlackjack(state.playerHand) && isBlackjack(state.dealerHand)) return 'You and the dealer both have blackjack.';
   if (isBlackjack(state.dealerHand)) return 'The dealer has blackjack.';
   if (isBlackjack(state.playerHand)) return 'An ace and a ten-value card: blackjack.';

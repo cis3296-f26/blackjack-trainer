@@ -13,7 +13,7 @@ import { handValue, isBlackjack, isBust } from './hand';
 import { INITIAL_BALANCE, BANKRUPT_BAILOUT, type ChipValue } from './types';
 
 // 'dealerTurn' is part of the model, but for now the dealer plays instantly inside STAND,
-// so the state never rests i n it. It's there for later (e.g. animating dealer draws).
+// so the state never rests in it. It's there for later (e.g. animating dealer draws).
 export type Phase = "idle" | "playerTurn" | "dealerTurn" | "done";
 
 export type Result = "win" | "lose" | "push" | "blackjack" | "surrender";
@@ -99,6 +99,8 @@ export function canSplit(state: GameState): boolean {
     (state.freePlay || state.balance >= state.currentBet);
 }
 
+// Late surrender: give up the first two cards for half the bet back. A dealer blackjack
+// ends the hand at the deal, so surrender is never offered against one. Not after a split.
 export function canSurrender(state: GameState): boolean {
   return (
     state.phase === 'playerTurn' &&
@@ -130,6 +132,8 @@ export function returnedChips(wager: number, result: Result, payout: BlackjackPa
   if (result === 'blackjack') return wager + blackjackProfit(wager, payout);
   if (result === 'win') return wager * 2;
   if (result === 'push') return wager;
+  // Surrender gives back half the bet, rounded down to whole chips
+  if (result === 'surrender') return Math.floor(wager / 2);
   return 0;
 }
 
@@ -488,28 +492,8 @@ export function settleRoundBet(
   outcome: Result,
   blackjackPayout: BlackjackPayout,
 ): { nextBalance: number; bailoutTriggered: boolean } {
-  let nextBalance = balance;
-
-  switch (outcome) {
-    case "blackjack":
-      // Original bet returned + the house's blackjack payout (3:2, 6:5 or 1:1)
-      nextBalance += currentBet + blackjackProfit(currentBet, blackjackPayout);
-      break;
-    case "win":
-      // Standard win pays 1:1 (original bet returned + 1x winnings)
-      nextBalance += currentBet * 2;
-      break;
-    case "push":
-      // Tie returns the original bet
-      nextBalance += currentBet;
-      break;
-    case "surrender":
-      nextBalance += Math.floor(currentBet / 2);
-      break;
-    case "lose":
-      // Bet was already deducted from balance when placed
-      break;
-  }
+  // Same helper as the round summary, so the balance and the result banner always agree
+  let nextBalance = balance + returnedChips(currentBet, outcome, blackjackPayout);
 
   // Automatic Bankruptcy Bailout: If balance hits $0 after losing, grant $100
   let bailoutTriggered = false;

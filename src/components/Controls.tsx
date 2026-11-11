@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { activeBet, canDouble, canRebet, canSplit, openingWager, type GameAction, type GameState } from '../engine/game';
+import { activeBet, canDouble, canRebet, canSplit, canSurrender, openingWager, type GameAction, type GameState } from '../engine/game';
 import { handValue } from '../engine/hand';
 import { doubleAllowedOnTotal } from '../engine/rules';
 import { CASINO_CHIPS } from '../engine/types';
@@ -7,18 +7,6 @@ import ResultBanner from './ResultBanner';
 import './Controls.css';
 
 interface ControlsProps {
-  phase: Phase;
-  balance: number;
-  currentBet: number;
-  bailoutTriggered?: boolean;
-  canDouble: boolean;
-  canSplit: boolean;
-  canSurrender: boolean;
-  onSurrender: () => void;
-  freePlay: boolean;
-  onToggleFreePlay: (enabled: boolean) => void;
-  onPlaceBet: (amount: ChipValue) => void;
-  onClearBet: () => void;
   state: GameState;
   dispatch: (action: GameAction) => void;
   onDeal: () => void;
@@ -45,6 +33,7 @@ export default function Controls({ state, dispatch, onDeal, onRebet }: ControlsP
       ? `This table allows doubling only on ${state.rules.doubleOn === '9-11' ? '9, 10 or 11' : '10 or 11'}.`
       : `Double needs another $${handBet}; you have $${state.balance} available.`;
   const splitAvailable = canSplit(state);
+  const surrenderAvailable = canSurrender(state);
 
   // Keep keyboard users at the action area when the button they used disappears.
   useEffect(() => {
@@ -118,10 +107,21 @@ export default function Controls({ state, dispatch, onDeal, onRebet }: ControlsP
               <button type="button" className="button button--action" disabled={!splitAvailable}
                 onClick={() => dispatch({ type: 'SPLIT' })}>Split</button>
             )}
+            {state.splitHands.length === 0 && (
+              <button type="button" className="button button--action" disabled={!surrenderAvailable}
+                aria-describedby="surrender-help" onClick={() => dispatch({ type: 'SURRENDER' })}>Surrender</button>
+            )}
           </div>
           <p className="action-dock__help" id="double-help">
             {canDouble(state) ? (state.freePlay ? 'Double takes one final card, then stands.' : `Double adds $${handBet}, takes one final card, then stands.`) : doubleReason}
           </p>
+          {state.splitHands.length === 0 && (
+            <p className="action-dock__help" id="surrender-help">
+              {surrenderAvailable
+                ? (state.freePlay ? 'Surrender gives up this hand.' : `Surrender gives up this hand and returns $${Math.floor(handBet / 2)}, half your bet.`)
+                : 'Surrender is available only on your first two cards.'}
+            </p>
+          )}
         </>
       )}
 

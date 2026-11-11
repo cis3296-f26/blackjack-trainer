@@ -66,7 +66,8 @@ export function doubleAllowedOnTotal(total: number, doubleOn: DoubleOn): boolean
 // Rules the engine can't vary yet
 export const FIXED_TABLE_RULES: string[] = [
   'Split once per hand; split aces get one card each',
-  'Surrender and insurance are not offered',
+  'Late surrender on your first two cards returns half your bet',
+  'Insurance is not offered',
 ];
 
 // Penetration is compared in whole percents so float noise (0.7 vs 0.7000000001) doesn't matter

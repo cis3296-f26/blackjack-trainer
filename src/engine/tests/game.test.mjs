@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { moduleUrl } from './load-module.mjs';
 
-const { gameReducer, initialState, openingWager, canRebet, canDouble, canSplit, returnedChips, settleRoundBet } = await import(await moduleUrl(new URL('../game.ts', import.meta.url)));
+const { gameReducer, initialState, openingWager, canRebet, canDouble, canSplit, canSurrender, returnedChips, settleRoundBet } = await import(await moduleUrl(new URL('../game.ts', import.meta.url)));
 const { shoeStatus, resultReason } = await import(await moduleUrl(new URL('../presentation.ts', import.meta.url)));
 const { createShoe } = await import(await moduleUrl(new URL('../shoe.ts', import.meta.url)));
 const card = rank => ({ rank, suit: '♠' });
@@ -169,4 +169,34 @@ test('split hands settle separately, double on the active stake, and rebet the o
   assert.equal(resultReason(done), 'Hand 1 wins, Hand 2 wins.');
   assert.equal(openingWager(done), 25);
   assert.equal(gameReducer(done, { type: 'REBET_AND_DEAL', deck: deck('10', '6', '7', '10') }).balance, 550);
+});
+
+test('surrender returns half the bet, and the banner summary matches the balance', () => {
+  const state = gameReducer(deal(['10', '10', '6', '8']), { type: 'SURRENDER' });
+  assert.equal(state.phase, 'done');
+  assert.equal(state.result, 'surrender');
+  assert.equal(state.balance, 487);
+  assert.deepEqual(state.lastRound, { wager: 25, returned: 12, profit: -13, bailout: 0, freePlay: false });
+  assert.equal(resultReason(state), 'You surrendered your 16 and got half your bet back.');
+  assert.equal(openingWager(state), 25);
+  assert.equal(settleRoundBet(475, 25, 'surrender', '3:2').nextBalance, 487);
+});
+
+test('surrender is only offered on the first two cards and never after a split', () => {
+  assert.equal(canSurrender(initialState), false);
+  const hit = gameReducer(deal(['10', '10', '2', '8', '3']), { type: 'HIT' });
+  assert.equal(canSurrender(hit), false);
+  assert.equal(gameReducer(hit, { type: 'SURRENDER' }), hit);
+  const split = gameReducer(deal(['8', '10', '8', '7', '3', '10']), { type: 'SPLIT' });
+  assert.equal(canSurrender(split), false);
+  assert.equal(gameReducer(split, { type: 'SURRENDER' }), split);
+});
+
+test('surrender in free play leaves the balance alone', () => {
+  const free = gameReducer(initialState, { type: 'SET_FREE_PLAY', enabled: true });
+  const state = gameReducer(gameReducer(free, { type: 'DEAL', deck: deck('10', '10', '6', '8') }), { type: 'SURRENDER' });
+  assert.equal(state.result, 'surrender');
+  assert.equal(state.balance, initialState.balance);
+  assert.equal(state.lastRound.freePlay, true);
+  assert.equal(resultReason(state), 'You surrendered your 16.');
 });
