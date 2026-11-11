@@ -1,133 +1,116 @@
-import type { Phase } from "../engine/game";
-import { CASINO_CHIPS, type ChipValue } from "../engine/types";
-import "./Controls.css";
+import { useEffect, useRef, useState } from 'react';
+import { canDouble, canRebet, openingWager, type GameAction, type GameState } from '../engine/game';
+import { CASINO_CHIPS } from '../engine/types';
+import ResultBanner from './ResultBanner';
+import './Controls.css';
 
 interface ControlsProps {
-  phase: Phase;
-  balance: number;
-  currentBet: number;
-  bailoutTriggered?: boolean;
-  canDouble: boolean;
-  freePlay: boolean;
-  onToggleFreePlay: (enabled: boolean) => void;
-  onPlaceBet: (amount: ChipValue) => void;
-  onClearBet: () => void;
+  state: GameState;
+  dispatch: (action: GameAction) => void;
   onDeal: () => void;
-  onHit: () => void;
-  onStand: () => void;
-  onDouble: () => void;
+  onRebet: () => void;
 }
 
-// Action buttons. Each one is enabled only in the phase where it makes sense.
-export default function Controls({
-  phase,
-  balance = 500,
-  currentBet = 0,
-  bailoutTriggered = false,
-  canDouble,
-  freePlay,
-  onToggleFreePlay,
-  onPlaceBet,
-  onClearBet,
-  onDeal,
-  onHit,
-  onStand,
-  onDouble,
-}: ControlsProps) {
-  const isPlayerTurn = phase === "playerTurn";
-  const canBet = phase === "idle" || phase === "done";
-  const canDeal = canBet && (freePlay || currentBet > 0);
+export default function Controls({ state, dispatch, onDeal, onRebet }: ControlsProps) {
+  const [editingRound, setEditingRound] = useState<GameState['lastRound']>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const previousPhase = useRef(state.phase);
+  const previousBetting = useRef(false);
+  const playing = state.phase === 'playerTurn';
+  const betweenHands = state.phase === 'idle' || state.phase === 'done';
+  const repeatAmount = openingWager(state);
+  const affordable = canRebet(state);
+  const previousBetTooLarge = state.phase === 'done' && repeatAmount > state.balance && state.currentBet === 0;
+  const betting = betweenHands && !state.freePlay && (
+    state.phase === 'idle' || state.lastRound === editingRound || state.currentBet > 0 || !affordable
+  );
+  const doubleReason = state.playerHand.length !== 2
+    ? 'Double is available only on your first two cards.'
+    : `Double needs another $${state.currentBet}; you have $${state.balance} available.`;
+
+  // Keep keyboard users at the action area when the button they used disappears.
+  useEffect(() => {
+    if (previousPhase.current !== state.phase || (previousPhase.current === 'done' && previousBetting.current !== betting)) {
+      panelRef.current?.focus({ preventScroll: true });
+    }
+    previousPhase.current = state.phase;
+    previousBetting.current = betting;
+  }, [state.phase, betting]);
 
   return (
-    <div className="controls-wrapper">
-      {/* Betting / Free Play switch (only between hands) */}
-      <div className="mode-toggle" role="group" aria-label="Game mode">
-        <button
-          type="button"
-          aria-pressed={!freePlay}
-          disabled={!canBet}
-          onClick={() => onToggleFreePlay(false)}
-        >
-          Betting
-        </button>
-        <button
-          type="button"
-          aria-pressed={freePlay}
-          disabled={!canBet}
-          onClick={() => onToggleFreePlay(true)}
-        >
-          Free Play
-        </button>
+    <section className="action-dock" aria-label="Hand actions" tabIndex={-1} ref={panelRef}>
+      <div className="action-dock__top">
+        {betweenHands && <div className="mode-toggle" role="group" aria-label="Game mode">
+          <button type="button" aria-pressed={!state.freePlay} disabled={!betweenHands}
+            onClick={() => dispatch({ type: 'SET_FREE_PLAY', enabled: false })}>Betting</button>
+          <button type="button" aria-pressed={state.freePlay} disabled={!betweenHands}
+            onClick={() => dispatch({ type: 'SET_FREE_PLAY', enabled: true })}>Free Play</button>
+        </div>}
+        <span className="action-dock__note" id="mode-help">
+          {betweenHands ? (state.freePlay ? 'Practice without betting' : 'Practice chips only') : `${state.freePlay ? 'Free Play' : 'Betting'} · Change mode between hands`}
+        </span>
       </div>
 
-      {!freePlay && (
+      <ResultBanner state={state} />
+
+      <div className="action-dock__status">
+        {state.phase !== 'done' && <h2>{playing ? 'Your turn' : state.freePlay ? 'Ready to practice?' : 'Choose chips, then deal'}</h2>}
+        {!state.freePlay && (
+          <div className="bankroll-hud" aria-live="polite" aria-atomic="true">
+            <span>Available <strong>${state.balance}</strong></span>
+            {(betting || playing) && <span>{playing ? 'Bet' : 'Your bet'} <strong>${state.currentBet}</strong></span>}
+          </div>
+        )}
+      </div>
+
+      {betting && (
+        <div className="bet-editor">
+          <div className="chip-rack" role="group" aria-label="Add chips to your bet">
+            {CASINO_CHIPS.map(chip => (
+              <button key={chip.value} type="button" className="casino-chip"
+                style={{ '--chip-color': chip.color } as React.CSSProperties}
+                disabled={state.balance < chip.value} aria-label={`Add ${chip.label} to bet`}
+                onClick={() => dispatch({ type: 'PLACE_BET', amount: chip.value })}>
+                <span className="chip-inner">{chip.label}</span>
+              </button>
+            ))}
+          </div>
+          <p className="action-dock__help" id="bet-help">
+            {previousBetTooLarge
+              ? `Previous bet: $${repeatAmount}. Choose a smaller bet.`
+              : state.currentBet === 0 ? 'Choose chips to deal. Each tap adds to your bet.' : 'Add more chips or deal your hand.'}
+          </p>
+          <div className="controls">
+            <button type="button" className="button button--secondary" disabled={state.currentBet === 0}
+              onClick={() => dispatch({ type: 'CLEAR_BET' })}>Clear bet</button>
+            <button type="button" className="button button--primary" disabled={state.currentBet === 0}
+              aria-describedby="bet-help" onClick={onDeal}>{state.currentBet > 0 ? `Deal $${state.currentBet}` : 'Deal'}</button>
+          </div>
+        </div>
+      )}
+
+      {playing && (
         <>
-          {/* Bankroll & Current Bet Display */}
-          <div className="bankroll-hud">
-            <div className="stat-box">
-              <span className="stat-label">Bankroll</span>
-              <span className="stat-value">${balance}</span>
-            </div>
-            <div className="stat-box">
-              <span className="stat-label">Current Bet</span>
-              <span className="stat-value">${currentBet}</span>
-            </div>
+          <div className="controls controls--play">
+            <button type="button" className="button button--action" onClick={() => dispatch({ type: 'HIT' })}>Hit</button>
+            <button type="button" className="button button--action" onClick={() => dispatch({ type: 'STAND' })}>Stand</button>
+            <button type="button" className="button button--action" disabled={!canDouble(state)}
+              aria-describedby="double-help" onClick={() => dispatch({ type: 'DOUBLE' })}>Double</button>
           </div>
-
-          {/* Bankruptcy Bailout Alert */}
-          {bailoutTriggered && canBet && (
-            <div className="bailout-banner">
-              Bankrupt! You received a <strong>+$100</strong> bailout to keep
-              playing.
-            </div>
-          )}
-
-          {/* Casino Chip Selector (Enabled between hands in 'idle' or 'done' phase) */}
-          <div className="chip-rack">
-            {CASINO_CHIPS.map((chip) => {
-              const canAfford = balance >= chip.value;
-              return (
-                <button
-                  key={chip.value}
-                  type="button"
-                  className="casino-chip"
-                  style={{ "--chip-color": chip.color } as React.CSSProperties}
-                  disabled={!canBet || !canAfford}
-                  onClick={() => onPlaceBet(chip.value)}
-                  title={`Bet ${chip.label}`}
-                >
-                  <span className="chip-inner">{chip.label}</span>
-                </button>
-              );
-            })}
-          </div>
+          <p className="action-dock__help" id="double-help">
+            {canDouble(state) ? (state.freePlay ? 'Double takes one final card, then stands.' : `Double adds $${state.currentBet}, takes one final card, then stands.`) : doubleReason}
+          </p>
         </>
       )}
 
-      {/* Game Action Buttons */}
-      <div className="controls">
-        {!freePlay && (
-          <button
-            type="button"
-            onClick={onClearBet}
-            disabled={!canBet || currentBet === 0}
-          >
-            Clear Bet
-          </button>
-        )}
-        <button type="button" onClick={onDeal} disabled={!canDeal}>
-          {phase === "done" ? "New Hand" : "Deal"}
-        </button>
-        <button type="button" onClick={onHit} disabled={!isPlayerTurn}>
-          Hit
-        </button>
-        <button type="button" onClick={onStand} disabled={!isPlayerTurn}>
-          Stand
-        </button>
-        <button type="button" onClick={onDouble} disabled={!canDouble}>
-          Double
-        </button>
-      </div>
-    </div>
+      {state.phase === 'done' && !state.freePlay && !betting && (
+        <div className="controls">
+          <button type="button" className="button button--primary" onClick={onRebet}>Rebet ${repeatAmount} &amp; deal</button>
+          <button type="button" className="button button--secondary" onClick={() => setEditingRound(state.lastRound)}>Change bet</button>
+        </div>
+      )}
+      {betweenHands && state.freePlay && <button type="button" className="button button--primary" onClick={onDeal}>{state.phase === 'done' ? 'Next hand' : 'Deal a hand'}</button>}
+      {state.phase === 'dealerTurn' && <p role="status">Dealer is playing…</p>}
+    </section>
   );
 }

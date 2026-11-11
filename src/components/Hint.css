@@ -1,54 +1,30 @@
-.hint {
-  position: fixed;
-  top: 1rem;
-  right: 1rem;
-  z-index: 10;
-}
-
-.hint__toggle {
-  padding: 0.6rem 1rem;
-  font-size: 1rem;
-  font-weight: bold;
-  border: none;
-  border-radius: 6px;
-  background: #f5c542;
-  color: #222;
-  cursor: pointer;
-}
-
-.hint__toggle:hover {
-  background: #ffd75e;
-}
-
-.hint__window {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  right: 0;
-  width: 260px;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.85);
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-}
-
-.hint__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.hint__close {
-  border: none;
-  background: none;
-  color: #fff;
-  font-size: 1.25rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.hint__text {
-  margin: 0;
-  font-size: 0.95rem;
+.practice-panel { grid-area: help; min-width: 0; padding: 1.2rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.practice-panel h2 { margin: 0.3rem 0 0.6rem; font-size: 1.5rem; letter-spacing: -0.02em; }
+.practice-panel p, .practice-panel dd { color: var(--muted); font-size: 0.85rem; }
+.practice-panel__intro p { margin: 0 0 1rem; }
+.hint-toggle { width: 100%; }
+.hint-content { margin-top: 0.8rem; }
+.hint-content > p { margin: 0.5rem 0; }
+.hint-recommendation { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem 0.75rem; }
+.hint-recommendation strong { font-size: 1.25rem; color: var(--gold); }
+.practice-panel summary { min-height: 44px; padding: 0.65rem 0; cursor: pointer; font-size: 0.9rem; font-weight: 600; color: var(--cream); }
+.how-to-play { border-top: 1px solid var(--line); padding-top: 0.3rem; margin-top: 1.25rem; }
+.how-to-play p { margin-top: 0.25rem; }
+.how-to-play dl { margin-bottom: 0; }
+.how-to-play dt { font-weight: 700; font-size: 0.85rem; color: var(--cream); }
+.how-to-play dd { margin: 0.2rem 0 0.8rem; }
+.hint-table-scroll { overflow-x: auto; }
+.hint-comparison table { width: 100%; border-collapse: collapse; font-size: 0.7rem; font-variant-numeric: tabular-nums; }
+.hint-comparison th, .hint-comparison td { text-align: right; padding: 0.45rem 0.2rem; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.hint-comparison th:first-child { text-align: left; }
+.hint-comparison p { font-size: 0.75rem; }
+@media (max-width: 1023px) {
+  .practice-panel { padding: 0.75rem 1rem; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.25rem 1rem; align-items: start; }
+  .practice-panel__intro { display: none; }
+  .practice-panel__intro h2, .practice-panel__intro .eyebrow { display: none; }
+  .practice-panel__intro p { margin: 0 0 0.5rem; font-size: 0.8rem; }
+  .hint-toggle { grid-column: 1; grid-row: 2; }
+  .how-to-play { grid-column: 2; grid-row: 2; border: 0; padding: 0; margin: 0; }
+  .hint-content { grid-column: 1 / -1; grid-row: 3; }
+  .hint-comparison table { font-size: 0.85rem; }
 }

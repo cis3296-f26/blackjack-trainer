@@ -1,5 +1,4 @@
 import type { Result } from "./game";
-import { isBlackjack } from "./hand";
 
 export interface hand_info {
   result: Result;
