@@ -25,54 +25,7 @@ interface HouseSettingsProps {
 // The slider works in whole percents so the stored fraction never picks up float noise
 const toPercent = (fraction: number) => Math.round(fraction * 100);
 
-const CUSTOM = 'custom';
-
-const DOUBLE_ON_CHOICES: { value: DoubleOn; label: string }[] = [
-  { value: 'any', label: 'Any 2' },
-  { value: '9-11', label: '9–11' },
-  { value: '10-11', label: '10–11' },
-];
-
-interface ChoiceGroupProps<T> {
-  label: string;
-  choices: readonly { value: T; label: string }[];
-  value: T;
-  disabled: boolean;
-  onSelect: (value: T) => void;
-}
-
-// One labelled row of mutually exclusive buttons, styled like the Betting / Free play toggle
-function ChoiceGroup<T extends string | number | boolean>({
-  label,
-  choices,
-  value,
-  disabled,
-  onSelect,
-}: ChoiceGroupProps<T>) {
-  const labelId = useId();
-  return (
-    <div className="house-settings__field">
-      <span id={labelId} className="house-settings__label">
-        {label}
-      </span>
-      <div className="mode-toggle" role="group" aria-labelledby={labelId}>
-        {choices.map((choice) => (
-          <button
-            key={String(choice.value)}
-            type="button"
-            aria-pressed={value === choice.value}
-            disabled={disabled}
-            onClick={() => onSelect(choice.value)}
-          >
-            {choice.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// Gear button plus a modal for the casino-specific table settings
+// Table-rules button plus a native modal for casino-specific settings.
 export default function HouseSettings({ rules, canEdit, onChange }: HouseSettingsProps) {
   const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -93,13 +46,13 @@ export default function HouseSettings({ rules, canEdit, onChange }: HouseSetting
     <>
       <button
         type="button"
-        className="house-settings__toggle"
+        className="button button--secondary house-settings__toggle"
         onClick={() => setOpen(true)}
-        aria-label="House settings"
+        aria-label="Table rules"
         aria-haspopup="dialog"
-        title="House Settings"
+        title="Table rules"
       >
-        ⚙
+        Table rules
       </button>
 
       <dialog
@@ -114,12 +67,12 @@ export default function HouseSettings({ rules, canEdit, onChange }: HouseSetting
       >
         <div className="house-settings__panel">
           <div className="house-settings__header">
-            <h2 id="house-settings-title">House Settings</h2>
+            <h2 id="house-settings-title">Table rules</h2>
             <button
               type="button"
               className="house-settings__close"
               onClick={() => setOpen(false)}
-              aria-label="Close house settings"
+              aria-label="Close table rules"
             >
               ×
             </button>
@@ -127,7 +80,7 @@ export default function HouseSettings({ rules, canEdit, onChange }: HouseSetting
 
           {!canEdit && (
             <p className="house-settings__notice">
-              Finish the current hand to change house settings.
+              Finish this hand to change table rules.
             </p>
           )}
 
@@ -161,75 +114,34 @@ export default function HouseSettings({ rules, canEdit, onChange }: HouseSetting
           </section>
 
           <section className="house-settings__section">
-            <h3>Shoe</h3>
-            <ChoiceGroup
-              label="Number of decks"
-              choices={DECK_OPTIONS.map((n) => ({ value: n, label: String(n) }))}
-              value={rules.numDecks}
-              disabled={!canEdit}
-              onSelect={(numDecks) => set({ numDecks })}
-            />
-            <p className="house-settings__help">Changing decks starts a fresh shoe.</p>
-
-            <div className="house-settings__field">
-              <label htmlFor="house-settings-penetration" className="house-settings__label">
-                Shoe penetration
-              </label>
-              <div className="house-settings__slider">
-                <input
-                  id="house-settings-penetration"
-                  type="range"
-                  min={toPercent(PENETRATION_MIN)}
-                  max={toPercent(PENETRATION_MAX)}
-                  step={toPercent(PENETRATION_STEP)}
-                  value={toPercent(rules.penetration)}
-                  disabled={!canEdit}
-                  onChange={(e) => set({ penetration: Number(e.target.value) / 100 })}
-                />
-                <output htmlFor="house-settings-penetration">
-                  {toPercent(rules.penetration)}%
-                </output>
-              </div>
+            <h3>
+              <label htmlFor="house-settings-penetration">Reshuffle after {toPercent(rules.penetration)}% dealt</label>
+            </h3>
+            <div className="house-settings__slider">
+              <input
+                id="house-settings-penetration"
+                type="range"
+                aria-valuetext={`${toPercent(rules.penetration)} percent dealt`}
+                min={toPercent(PENETRATION_MIN)}
+                max={toPercent(PENETRATION_MAX)}
+                step={toPercent(PENETRATION_STEP)}
+                value={toPercent(rules.penetration)}
+                disabled={!canEdit}
+                onChange={(e) =>
+                  onChange({ ...rules, penetration: Number(e.target.value) / 100 })
+                }
+              />
+              <output htmlFor="house-settings-penetration">
+                {toPercent(rules.penetration)}%
+              </output>
             </div>
             <p className="house-settings__help">
-              Reshuffles with ~{reshuffleThreshold(rules)} cards left in the shoe.
+              About {reshuffleThreshold(rules)} cards remain before reshuffling.
             </p>
           </section>
 
           <section className="house-settings__section">
-            <h3>Dealer</h3>
-            <ChoiceGroup
-              label="Soft 17"
-              choices={[
-                { value: false, label: 'Stand' },
-                { value: true, label: 'Hit' },
-              ]}
-              value={rules.dealerHitsSoft17}
-              disabled={!canEdit}
-              onSelect={(dealerHitsSoft17) => set({ dealerHitsSoft17 })}
-            />
-          </section>
-
-          <section className="house-settings__section">
-            <h3>Payouts</h3>
-            <ChoiceGroup
-              label="Blackjack pays"
-              choices={BLACKJACK_PAYOUT_OPTIONS.map((p) => ({ value: p, label: p }))}
-              value={rules.blackjackPayout}
-              disabled={!canEdit}
-              onSelect={(blackjackPayout) => set({ blackjackPayout })}
-            />
-          </section>
-
-          <section className="house-settings__section">
-            <h3>Player options</h3>
-            <ChoiceGroup
-              label="Double down on"
-              choices={DOUBLE_ON_CHOICES}
-              value={rules.doubleOn}
-              disabled={!canEdit}
-              onSelect={(doubleOn) => set({ doubleOn })}
-            />
+            <h3>Fixed rules</h3>
             <ul className="house-settings__rules">
               {FIXED_TABLE_RULES.map((rule) => (
                 <li key={rule}>{rule}</li>
@@ -237,15 +149,17 @@ export default function HouseSettings({ rules, canEdit, onChange }: HouseSetting
             </ul>
           </section>
 
+          <p className="house-settings__help">Changes save automatically on this device.</p>
           <div className="house-settings__footer">
             <button
               type="button"
-              className="house-settings__reset"
+              className="button button--secondary"
               disabled={!canEdit || isDefault}
               onClick={() => onChange(DEFAULT_HOUSE_RULES)}
             >
-              Reset to defaults
+              Reset defaults
             </button>
+            <button type="button" className="button button--primary" onClick={() => setOpen(false)}>Done</button>
           </div>
         </div>
       </dialog>

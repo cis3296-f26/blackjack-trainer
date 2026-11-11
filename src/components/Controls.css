@@ -1,156 +1,40 @@
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.75rem;
+.action-dock { grid-area: actions; min-width: 0; padding: 1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); box-shadow: 0 8px 20px #00231233; }
+.action-dock__top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem 1rem; margin-bottom: 0.8rem; }
+.action-dock__note { color: var(--muted); font-size: 0.75rem; }
+.mode-toggle { display: inline-flex; border: 1px solid #a49043; border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+.mode-toggle button { min-height: 44px; border: none; padding: 0.45rem 0.9rem; color: var(--gold); font-size: 0.85rem; font-weight: 700; background: transparent; }
+.mode-toggle button[aria-pressed='true'] { color: #222; background: var(--gold); }
+.mode-toggle button:hover:not(:disabled):not([aria-pressed='true']) { background: #f5c54222; }
+.mode-toggle button:focus-visible { outline-offset: -4px; outline-color: #fff; }
+.action-dock__status { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.8rem; }
+.action-dock__status h2 { font-size: 1rem; margin: 0; color: var(--cream); }
+.bankroll-hud { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; font-size: 0.85rem; color: var(--muted); }
+.bankroll-hud strong { color: var(--cream); font-size: 1rem; margin-left: 0.2rem; font-variant-numeric: tabular-nums; }
+.controls { display: flex; flex-wrap: wrap; gap: 0.65rem; }
+.controls > button { flex: 1 1 auto; }
+.controls--play { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.controls--play > button { padding-inline: 0.3rem; }
+.action-dock > .button { width: 100%; }
+.action-dock__help { margin: 0.6rem 0 0; color: var(--muted); font-size: 0.8rem; }
+.bet-editor .action-dock__help { margin: 0.4rem 0 0.75rem; }
+.chip-rack { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.7rem; padding: 0.3rem 0; }
+.casino-chip { width: 56px; height: 56px; border-radius: 50%; background-color: var(--chip-color); border: 4px dashed #fff; box-shadow: 0 4px 8px #0006, inset 0 0 0 3px #0004; display: grid; place-items: center; padding: 0; transition: transform 150ms ease; }
+.casino-chip:hover:not(:disabled) { transform: translateY(-3px); }
+.casino-chip:active:not(:disabled) { transform: translateY(0); }
+.casino-chip:disabled { filter: grayscale(40%); }
+.chip-inner { width: 37px; height: 37px; border-radius: 50%; background: #ffffffe6; color: #0f172a; font-weight: 800; font-size: 0.8rem; display: grid; place-items: center; box-shadow: inset 0 1px 3px #0004; }
+@media (max-width: 1023px) {
+  .action-dock { position: sticky; bottom: 0; z-index: 5; background: #073821; padding-bottom: max(0.8rem, env(safe-area-inset-bottom)); box-shadow: 0 -6px 20px #00241655; }
 }
-
-.controls button {
-  min-width: 100px;
-  padding: 0.6rem 1rem;
-  font-size: 1rem;
-  font-weight: bold;
-  border: none;
-  border-radius: 6px;
-  background: #f5c542;
-  color: #222;
-  cursor: pointer;
+@media (max-width: 600px) {
+  .action-dock { padding: 0.75rem; padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
+  .action-dock__top { margin-bottom: 0.6rem; }
+  .action-dock__note { font-size: 0.7rem; }
+  .mode-toggle button { padding-inline: 0.65rem; }
+  .chip-rack { gap: 0.55rem; }
+  .casino-chip { width: 48px; height: 48px; }
+  .chip-inner { width: 32px; height: 32px; font-size: 0.75rem; }
+  .controls { gap: 0.5rem; }
 }
-
-.controls button:hover:not(:disabled) {
-  background: #ffd75e;
-}
-
-.controls button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* Stacks the bankroll HUD, bailout banner, chip rack and buttons with space between them */
-.controls-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.25rem;
-  margin-top: 1.5rem;
-}
-
-.bankroll-hud {
-  display: flex;
-  gap: 2rem;
-  background: rgba(0, 0, 0, 0.35);
-  padding: 0.75rem 1.5rem;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.stat-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.stat-label {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  opacity: 0.75;
-}
-
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #fbbf24;
-}
-
-.bailout-banner {
-  background: rgba(239, 68, 68, 0.2);
-  border: 1px solid #ef4444;
-  color: #fecaca;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  font-size: 0.9rem;
-}
-
-.chip-rack {
-  display: flex;
-  gap: 0.85rem;
-  flex-wrap: wrap;
-  justify-content: center;
-  padding: 0.5rem 0; /* room for the hover lift and shadow so chips don't touch neighbors */
-}
-
-.casino-chip {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background-color: var(--chip-color);
-  border: 5px dashed #ffffff;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 0 0 3px rgba(0, 0, 0, 0.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: transform 0.15s ease, opacity 0.15s ease;
-  padding: 0;
-}
-
-.casino-chip:hover:not(:disabled) {
-  transform: translateY(-4px) scale(1.05);
-}
-
-.casino-chip:active:not(:disabled) {
-  transform: translateY(0) scale(0.97);
-}
-
-.casino-chip:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-  filter: grayscale(40%);
-}
-
-.chip-inner {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.9);
-  color: #0f172a;
-  font-weight: 800;
-  font-size: 0.85rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-/* Segmented Betting / Free Play switch; the active mode is filled gold */
-.mode-toggle {
-  display: flex;
-  border: 1px solid #f5c542;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.mode-toggle button {
-  padding: 0.4rem 1rem;
-  font-size: 0.9rem;
-  font-weight: bold;
-  border: none;
-  background: transparent;
-  color: #f5c542;
-  cursor: pointer;
-}
-
-.mode-toggle button[aria-pressed="true"] {
-  background: #f5c542;
-  color: #222;
-}
-
-.mode-toggle button:hover:not(:disabled):not([aria-pressed="true"]) {
-  background: rgba(245, 197, 66, 0.15);
-}
-
-.mode-toggle button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+/* At high zoom or in landscape, let the entire panel scroll normally. */
+@media (max-height: 650px) { .action-dock { position: static; } }
