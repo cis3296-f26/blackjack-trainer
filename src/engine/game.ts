@@ -85,8 +85,26 @@ export function canDouble(state: GameState): boolean {
     state.phase === "playerTurn" &&
     state.playerHand.length === 2 &&
     doubleAllowedOnTotal(handValue(state.playerHand).total, state.rules.doubleOn) &&
-    (state.freePlay || state.balance >= state.currentBet)
+    (state.freePlay || state.balance >= activeBet(state))
   );
+}
+
+function activeBet(state: GameState): number {
+  return state.splitHands[state.activeHandIndex]?.bet ?? state.currentBet;
+}
+
+// One split per round; any two ten-value cards are also eligible.
+export function canSplit(state: GameState): boolean {
+  if (
+    state.phase !== 'playerTurn' ||
+    state.splitHands.length > 0 ||
+    state.playerHand.length !== 2
+  ) return false;
+
+  const value = (card: Card) => ['10', 'J', 'Q', 'K'].includes(card.rank) ? '10' : card.rank;
+  const [first, second] = state.playerHand;
+  return value(first) === value(second) &&
+    (state.freePlay || state.balance >= state.currentBet);
 }
 
 // The dealer draws to 16 and stands on 17, except a soft 17 under H17 rules
