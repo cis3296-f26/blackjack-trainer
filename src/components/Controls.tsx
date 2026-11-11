@@ -7,6 +7,18 @@ import ResultBanner from './ResultBanner';
 import './Controls.css';
 
 interface ControlsProps {
+  phase: Phase;
+  balance: number;
+  currentBet: number;
+  bailoutTriggered?: boolean;
+  canDouble: boolean;
+  canSplit: boolean;
+  canSurrender: boolean;
+  onSurrender: () => void;
+  freePlay: boolean;
+  onToggleFreePlay: (enabled: boolean) => void;
+  onPlaceBet: (amount: ChipValue) => void;
+  onClearBet: () => void;
   state: GameState;
   dispatch: (action: GameAction) => void;
   onDeal: () => void;
