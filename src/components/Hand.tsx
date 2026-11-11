@@ -7,11 +7,12 @@ interface HandProps {
   title: string;
   cards: CardType[];
   hideHoleCard?: boolean; // hides the second card (the dealer's hole card)
+  fromSplit?: boolean;
 }
 
 // Text for a hand's total, e.g. "17", "soft 17", "Blackjack", "24 (bust)"
-function describeTotal(cards: CardType[]): string {
-  if (isBlackjack(cards)) return 'Blackjack';
+function describeTotal(cards: CardType[], fromSplit: boolean): string {
+  if (!fromSplit && isBlackjack(cards)) return 'Blackjack';
   const { total, soft } = handValue(cards);
   if (total > 21) return `${total} (bust)`;
   return soft ? `soft ${total}` : String(total);
@@ -19,7 +20,7 @@ function describeTotal(cards: CardType[]): string {
 
 // A row of cards with a title and the hand's total.
 // While the hole card is hidden, the total only counts the cards you can see.
-export default function Hand({ title, cards, hideHoleCard = false }: HandProps) {
+export default function Hand({ title, cards, hideHoleCard = false, fromSplit = false }: HandProps) {
   const visibleCards = hideHoleCard ? cards.slice(0, 1) : cards;
 
   return (

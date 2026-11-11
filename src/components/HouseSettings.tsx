@@ -1,12 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import {
+  BLACKJACK_PAYOUT_OPTIONS,
   DECK_OPTIONS,
   DEFAULT_HOUSE_RULES,
   FIXED_TABLE_RULES,
+  HOUSE_RULE_PRESETS,
   PENETRATION_MAX,
   PENETRATION_MIN,
   PENETRATION_STEP,
+  findPreset,
   reshuffleThreshold,
+  rulesEqual,
+  type DoubleOn,
   type HouseRules,
 } from '../engine/rules';
 import './HouseSettings.css';
@@ -33,9 +38,9 @@ export default function HouseSettings({ rules, canEdit, onChange }: HouseSetting
     if (!open && dialog.open) dialog.close();
   }, [open]);
 
-  const isDefault =
-    rules.numDecks === DEFAULT_HOUSE_RULES.numDecks &&
-    toPercent(rules.penetration) === toPercent(DEFAULT_HOUSE_RULES.penetration);
+  const isDefault = rulesEqual(rules, DEFAULT_HOUSE_RULES);
+  const preset = findPreset(rules);
+  const set = (changes: Partial<HouseRules>) => onChange({ ...rules, ...changes });
 
   return (
     <>
@@ -80,21 +85,32 @@ export default function HouseSettings({ rules, canEdit, onChange }: HouseSetting
           )}
 
           <section className="house-settings__section">
-            <h3>Number of decks</h3>
-            <div className="mode-toggle" role="group" aria-label="Number of decks">
-              {DECK_OPTIONS.map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  aria-pressed={rules.numDecks === n}
-                  disabled={!canEdit}
-                  onClick={() => onChange({ ...rules, numDecks: n })}
-                >
-                  {n}
-                </button>
+            <h3>
+              <label htmlFor="house-settings-preset">Casino preset</label>
+            </h3>
+            <select
+              id="house-settings-preset"
+              className="house-settings__select"
+              value={preset?.id ?? CUSTOM}
+              disabled={!canEdit}
+              onChange={(e) => {
+                const chosen = HOUSE_RULE_PRESETS.find((p) => p.id === e.target.value);
+                if (chosen) onChange(chosen.rules);
+              }}
+            >
+              {HOUSE_RULE_PRESETS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
               ))}
-            </div>
-            <p className="house-settings__help">Changing decks starts a fresh shoe.</p>
+              {/* Shown when the rules have been tweaked away from every preset */}
+              <option value={CUSTOM} disabled>
+                Custom
+              </option>
+            </select>
+            <p className="house-settings__help">
+              {preset ? preset.description : 'Your own mix of rules.'}
+            </p>
           </section>
 
           <section className="house-settings__section">

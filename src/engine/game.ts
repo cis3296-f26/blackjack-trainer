@@ -3,7 +3,10 @@ import { createShoe, draw, shuffle } from './shoe';
 import {
   DEFAULT_HOUSE_RULES,
   MIN_CARDS_BEFORE_RESHUFFLE,
+  blackjackProfit,
+  doubleAllowedOnTotal,
   reshuffleThreshold,
+  type BlackjackPayout,
   type HouseRules,
 } from './rules';
 import { handValue, isBlackjack, isBust } from './hand';
@@ -21,11 +24,19 @@ export interface RoundSummary {
   profit: number;
   bailout: number;
   freePlay: boolean;
+export interface SplitHand {
+  cards: Card[];
+  bet: number;
+  doubled: boolean;
+  complete: boolean;
+  result: Result | null;
 }
 
 export interface GameState {
   deck: Card[];
   playerHand: Card[];
+  splitHands: SplitHand[];
+  activeHandIndex: number;
   dealerHand: Card[]; // dealerHand[1] is the hole card, hidden during the player's turn
   phase: Phase;
   result: Result | null; // set only when phase is 'done'
@@ -47,6 +58,7 @@ export type GameAction =
   | { type: 'HIT' }
   | { type: 'STAND' }
   | { type: 'DOUBLE' }
+  | { type: 'SPLIT' }
   | { type: 'PLACE_BET'; amount: ChipValue }
   | { type: 'CLEAR_BET' }
   | { type: 'SET_FREE_PLAY'; enabled: boolean }
@@ -55,6 +67,8 @@ export type GameAction =
 export const initialState: GameState = {
   deck: [],
   playerHand: [],
+  splitHands: [],
+  activeHandIndex: 0,
   dealerHand: [],
   phase: "idle",
   result: null,
@@ -67,6 +81,19 @@ export const initialState: GameState = {
   freePlay: false,
   rules: DEFAULT_HOUSE_RULES,
 };
+
+function activeBet(state: GameState): number {
+  return state.splitHands[state.activeHandIndex]?.bet ?? state.currentBet;
+}
+
+// One split per round; any two ten-value cards are also eligible.
+export function canSplit(state: GameState): boolean {
+  const [first, second] = state.playerHand;
+  const value = (card: Card) => ['10', 'J', 'Q', 'K'].includes(card.rank) ? '10' : card.rank;
+  return state.phase === 'playerTurn' && state.splitHands.length === 0 &&
+    state.playerHand.length === 2 && value(first) === value(second) &&
+    (state.freePlay || state.balance >= state.currentBet);
+}
 
 // Supplies a freshly shuffled shoe for the current house rules; DEAL only uses it once the current shoe hits the cut card
 export function createDealAction(
@@ -94,18 +121,26 @@ export function returnedChips(wager: number, result: Result): number {
   return 0;
 }
 
-// Doubling is only allowed on the first two cards, and in betting mode only if the balance covers the extra bet
+// Doubling is only allowed on the first two cards, only on totals the house allows,
+// and in betting mode only if the balance covers the extra bet
 export function canDouble(state: GameState): boolean {
   return (
     state.phase === "playerTurn" &&
     state.playerHand.length === 2 &&
+    doubleAllowedOnTotal(handValue(state.playerHand).total, state.rules.doubleOn) &&
     (state.freePlay || state.balance >= state.currentBet)
   );
 }
 
+// The dealer draws to 16 and stands on 17, except a soft 17 under H17 rules
+export function dealerShouldHit(dealerHand: Card[], rules: HouseRules): boolean {
+  const { total, soft } = handValue(dealerHand);
+  return total < 17 || (total === 17 && soft && rules.dealerHitsSoft17);
+}
+
 // Decides the outcome from the player's point of view once the hand is over
-export function decideResult(playerHand: Card[], dealerHand: Card[]): Result {
-  const playerBlackjack = isBlackjack(playerHand);
+export function decideResult(playerHand: Card[], dealerHand: Card[], fromSplit = false): Result {
+  const playerBlackjack = !fromSplit && isBlackjack(playerHand);
   const dealerBlackjack = isBlackjack(dealerHand);
 
   if (playerBlackjack && dealerBlackjack) return "push";
@@ -123,6 +158,33 @@ export function decideResult(playerHand: Card[], dealerHand: Card[]): Result {
 
 // Ends the hand: reveals everything and records the result
 function finish(state: GameState): GameState {
+  if (state.splitHands.length > 0) {
+    const splitHands = state.splitHands.map((hand) => ({
+      ...hand,
+      complete: true,
+      // A two-card 21 after a split is a regular 21, not a natural blackjack.
+      result: decideResult(hand.cards, state.dealerHand, true),
+    }));
+    let returned = 0;
+    let profit = 0;
+    for (const hand of splitHands) {
+      const payout = hand.result === 'win' ? 2 : hand.result === 'push' ? 1 : 0;
+      returned += hand.bet * payout;
+      profit += state.freePlay ? payout - 1 : hand.bet * (payout - 1);
+    }
+    const balance = state.freePlay ? state.balance : state.balance + returned;
+    const bailoutTriggered = !state.freePlay && balance <= 0;
+    return {
+      ...state,
+      splitHands,
+      phase: 'done',
+      result: profit > 0 ? 'win' : profit < 0 ? 'lose' : 'push',
+      balance: bailoutTriggered ? BANKRUPT_BAILOUT : balance,
+      currentBet: 0,
+      lastbet: state.freePlay ? 0 : state.currentBet,
+      bailoutTriggered,
+    };
+  }
   const result = decideResult(state.playerHand, state.dealerHand);
 
   // Free play has nothing to settle, so the balance stays as it was
@@ -141,6 +203,7 @@ function finish(state: GameState): GameState {
     state.balance,
     state.currentBet,
     result,
+    state.rules.blackjackPayout,
   );
 
   return {
@@ -160,10 +223,38 @@ function finish(state: GameState): GameState {
     bailoutTriggered,
   };
 }
+
+// Keep the existing playerHand field pointing at the hand the controls act on.
+function saveActiveHand(state: GameState): GameState {
+  if (state.splitHands.length === 0) return state;
+  return {
+    ...state,
+    splitHands: state.splitHands.map((hand, index) => index === state.activeHandIndex
+      ? { ...hand, cards: state.playerHand, doubled: state.doubled }
+      : hand),
+  };
+}
+
+function completeActiveHand(state: GameState): GameState {
+  if (state.splitHands.length === 0) {
+    return isBust(state.playerHand) ? finish(state) : dealerPlays(state);
+  }
+  const saved = saveActiveHand(state);
+  const splitHands = saved.splitHands.map((hand, index) => index === saved.activeHandIndex
+    ? { ...hand, complete: true } : hand);
+  const nextIndex = splitHands.findIndex((hand) => !hand.complete);
+  if (nextIndex !== -1) {
+    return { ...saved, splitHands, activeHandIndex: nextIndex,
+      playerHand: splitHands[nextIndex].cards, doubled: splitHands[nextIndex].doubled };
+  }
+  const next = { ...saved, splitHands };
+  return splitHands.every((hand) => isBust(hand.cards)) ? finish(next) : dealerPlays(next);
+}
+
 function dealerPlays(state: GameState): GameState {
   let deck = state.deck;
   const dealerHand = [...state.dealerHand];
-  while (handValue(dealerHand).total < 17) {
+  while (dealerShouldHit(dealerHand, state.rules)) {
     const { card, rest } = draw(deck);
     dealerHand.push(card);
     deck = rest;
@@ -205,6 +296,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const next: GameState = {
         deck,
         playerHand: [dealt[0], dealt[2]],
+        splitHands: [],
+        activeHandIndex: 0,
         dealerHand: [dealt[1], dealt[3]],
         phase: "playerTurn",
         result: null,
@@ -234,19 +327,45 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         playerHand: [...state.playerHand, card],
       };
 
-      // Busting ends the hand right away; the dealer doesn't need to play
-      if (isBust(next.playerHand)) return finish(next);
-      return next;
+      // A bust completes this hand and advances to any remaining split hand.
+      if (isBust(next.playerHand)) return completeActiveHand(next);
+      return saveActiveHand(next);
     }
 
     case "STAND": {
       if (state.phase !== "playerTurn") return state;
-      return dealerPlays(state);
+      return completeActiveHand(state);
+    }
+
+    case "SPLIT": {
+      if (!canSplit(state)) return state;
+      const first = draw(state.deck);
+      const second = draw(first.rest);
+      const splitAces = state.playerHand[0].rank === 'A';
+      const splitHands: SplitHand[] = state.playerHand.map((card, index) => ({
+        cards: [card, index === 0 ? first.card : second.card],
+        bet: state.freePlay ? 0 : state.currentBet,
+        doubled: false,
+        complete: splitAces,
+        result: null,
+      }));
+      const next: GameState = {
+        ...state,
+        deck: second.rest,
+        splitHands,
+        activeHandIndex: 0,
+        playerHand: splitHands[0].cards,
+        doubled: false,
+        balance: state.freePlay ? state.balance : state.balance - state.currentBet,
+        currentBet: state.freePlay ? 0 : state.currentBet * 2,
+      };
+      return splitAces ? dealerPlays(next) : next;
     }
 
     case "DOUBLE": {
       if (!canDouble(state)) return state;
 
+      const bet = activeBet(state);
       const { card, rest } = draw(state.deck);
       const next = {
         ...state,
@@ -256,13 +375,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         // Free play has no bet to double
         balance: state.freePlay
           ? state.balance
-          : state.balance - state.currentBet,
-        currentBet: state.freePlay ? state.currentBet : state.currentBet * 2,
+          : state.balance - bet,
+        currentBet: state.freePlay ? state.currentBet : state.currentBet + bet,
+        splitHands: state.splitHands.map((hand, index) => index === state.activeHandIndex
+          ? { ...hand, bet: hand.bet * 2 } : hand),
       };
 
       // Exactly one card, then the turn is over
-      if (isBust(next.playerHand)) return finish(next);
-      return dealerPlays(next);
+      return completeActiveHand(next);
     }
 
     case "PLACE_BET": {
@@ -339,6 +459,7 @@ export function settleRoundBet(
   balance: number,
   currentBet: number,
   outcome: "blackjack" | "win" | "push" | "lose",
+  blackjackPayout: BlackjackPayout,
 ): { nextBalance: number; bailoutTriggered: boolean } {
   let nextBalance = balance + returnedChips(currentBet, outcome);
 

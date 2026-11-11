@@ -5,11 +5,13 @@ import { reshuffleThreshold } from './engine/rules';
 import { useAuth } from './auth';
 import { loadHouseRules, saveHouseRules } from './houseRulesStorage';
 import Controls from './components/Controls';
+// import TrainerControls from './components/TrainerControls'
 import Hand from './components/Hand';
 import Hint from './components/Hint';
 import HouseSettings from './components/HouseSettings';
 import AuthPage from './components/AuthPage';
 import './App.css';
+import MainMenu from './components/MainMenu';
 
 export default function App() {
   const { currentUser, logout } = useAuth();
@@ -31,6 +33,25 @@ export function GameTable({ userName, onLogout }: { userName: string; onLogout: 
     setLogoutError('');
     try { await onLogout(); }
     catch { setLogoutError('Could not log out. Please try again.'); setLoggingOut(false); }
+  }
+  
+  if (!inSimulation && !inTrainer) {
+    return (
+      <>
+        <div className="app__user-bar">
+          <span className="app__user-name">
+            {currentUser.displayName || currentUser.email}
+          </span>
+          <button type="button" className="app__logout" onClick={logout}>
+            Log Out
+          </button>
+        </div>
+        <MainMenu 
+          onStartSimulation={() => setInSimulation(true)} 
+          onStartTrainer={trainerClicked}
+         />
+      </>
+    )
   }
 
   return (
