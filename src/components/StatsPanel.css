@@ -1,0 +1,46 @@
+.stats-panel {
+  margin: 1rem auto;
+  padding: 1rem;
+  max-width: 720px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.stats-panel__title {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+
+.stats-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.5rem 1.5rem;
+  margin: 0;
+}
+
+.stats-panel__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.stats-panel__row dt {
+  opacity: 0.75;
+}
+
+.stats-panel__row dd {
+  margin: 0;
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+}
+
+.stats-panel__empty,
+.stats-panel__note {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+
+.stats-panel__note {
+  margin-top: 0.75rem;
+}
