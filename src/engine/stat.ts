@@ -1,9 +1,11 @@
 import type { Result } from "./game";
+import { blackjackProfit, type BlackjackPayout } from "./rules";
 
 export interface hand_info {
   result: Result;
   bet: number;
   doubled: boolean;
+  blackjackPayout: BlackjackPayout; // the table's rule when the hand was played
 }
 
 export interface Stats {
@@ -43,7 +45,7 @@ export const stats_initalizer: Stats = {
 export function profit_hand(hand: hand_info): number {
   switch (hand.result) {
     case "blackjack":
-      return Math.floor(hand.bet * 1.5);
+      return blackjackProfit(hand.bet, hand.blackjackPayout);
     case "win":
       return hand.bet;
     case "push":
