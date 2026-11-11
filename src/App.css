@@ -713,15 +713,18 @@
 .split-hand {
   flex: 1;
   min-width: 0;
-  padding: 0.5cqw;
-  border: 2px solid transparent;
-  border-radius: 8px;
-  background: rgb(0 0 0 / 20%);
+  text-align: center;
 }
 
-.split-hand--active {
-  border-color: #f5c542;
-  background: rgb(0 0 0 / 40%);
+.split-hand--active .hand__title {
+  color: #f5c542;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.split-hand--active .split-hand__status {
+  color: #f5c542;
+  font-weight: bold;
 }
 
 .split-hand__status {
