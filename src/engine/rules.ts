@@ -27,7 +27,10 @@ export const FIXED_TABLE_RULES: string[] = [
   'Blackjack pays 3:2',
   'Dealer peeks for blackjack',
   'Double on any first two cards',
-  'Splitting, surrender, and insurance are not offered',
+  'Split equal-value cards once per round (no resplitting)',
+  'Double after split is allowed',
+  'Split aces receive one card each; split 21 pays 1:1',
+  'Surrender and insurance are not offered',
 ];
 
 // Cards left in the shoe when the cut card comes out. 6 decks at 75% gives 78.
