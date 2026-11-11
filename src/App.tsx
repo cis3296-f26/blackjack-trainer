@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useReducer, useState } from 'react';
-import { canDouble, createDealAction, gameReducer, initialState } from './engine/game';
+import { useEffect, useMemo, useReducer } from 'react';
+import { canDouble, canSplit, createDealAction, gameReducer, initialState } from './engine/game';
 import { reshuffleThreshold } from './engine/rules';
-import { DEFAULT_SHOE_DECKS } from './engine/shoe';
 import { analyzeHand } from './engine/strategy';
 import { useAuth } from './AuthContext';
 import { loadHouseRules, saveHouseRules } from './engine/houseRulesStorage';
@@ -36,27 +35,12 @@ export default function App() {
   const doubleAvailable = canDouble(state);
 
   const analysis = useMemo(
-    () =>
-      state.phase === 'playerTurn'
-        ? analyzeHand(state.playerHand, state.dealerHand[0])
-        : null,
-    [state.phase, state.playerHand, state.dealerHand],
-  );
-
-  const simulationClicked = () => {
-    setInTrainer(false);
-    setInSimulation(true);
-  };
-
-  const trainerClicked = () => {
-    setInSimulation(false);
-    setInTrainer(true);
-  };
-
-  const returnToMenu = () => {
-    setInSimulation(false);
-    setInTrainer(false);
-  };
+  () =>
+    state.phase === 'playerTurn'
+      ? analyzeHand(state.playerHand, state.dealerHand[0], state.rules, doubleAvailable)
+      : null,
+  [state.phase, state.playerHand, state.dealerHand, doubleAvailable, state.rules],
+);
 
   // Hooks above must run on every render, so the login gate comes after them
   if (!currentUser) {
@@ -82,17 +66,29 @@ export default function App() {
     )
   }
 
-  const totalShoeCards = DEFAULT_SHOE_DECKS * 52; // 312
+  const { rules } = state;
+  const totalShoeCards = rules.numDecks * 52;
+  const cutCardAt = reshuffleThreshold(rules); // cards left when the cut card comes out
   const cardsRemaining = state.deck.length > 0 ? state.deck.length : totalShoeCards;
 
   // Only count cards as discarded after the round is completed/settled
-  const cardsUsedInCurrentHand = state.phase !== 'idle' ? state.playerHand.length + state.dealerHand.length : 0;
+  const playerCardCount = state.splitHands.length > 0
+    ? state.splitHands.reduce((total, hand) => total + hand.cards.length, 0)
+    : state.playerHand.length;
+  const cardsUsedInCurrentHand = state.phase !== 'idle' ? playerCardCount + state.dealerHand.length : 0;
   const discardedCards = state.phase === 'done'
     ? totalShoeCards - cardsRemaining
     : Math.max(0, (totalShoeCards - cardsRemaining) - cardsUsedInCurrentHand);
 
   const shoePercent = Math.max(0, Math.min(100, Math.round((cardsRemaining / totalShoeCards) * 100)));
   const discardPercent = Math.max(4, Math.min(100, Math.round((discardedCards / totalShoeCards) * 100)));
+  const cutCardPercent = Math.min(100, (cutCardAt / totalShoeCards) * 100);
+
+  // Felt lettering follows the house rules, e.g. "BLACKJACK PAYS 6 TO 5"
+  const blackjackPaysText = `BLACKJACK PAYS ${rules.blackjackPayout.replace(':', ' TO ')}`;
+  const dealerRuleText = rules.dealerHitsSoft17
+    ? 'Dealer must draw to 16 and hit soft 17'
+    : 'Dealer must draw to 16 and stand on all 17s';
 
   return (
     <>
@@ -148,21 +144,24 @@ export default function App() {
                   <div className="chip-tube tube--white-black" />
                 </div>
 
-                {/* Top-Right: 3D Angled Matte Black 6-Deck Shoe */}
-                <div
-                  className="black-dealing-shoe"
-                  title={`${cardsRemaining} / ${totalShoeCards} cards remaining in 6-deck shoe (Reshuffles at ${reshuffleThreshold(state.rules)})`}
-                >
-                  <div className="shoe-3d-body">
-                    <div className="shoe-top-lid" />
-                    <div className="shoe-front-plate">
-                      <div className="shoe-finger-cutout">
-                        <div
-                          className="shoe-visible-cards"
-                          style={{ height: `${shoePercent}%` }}
-                        />
-                        <div className="shoe-cut-marker" title="Cut Card (75%)" />
-                      </div>
+              {/* Top-Right: 3D Angled Matte Black Shoe */}
+              <div
+                className="black-dealing-shoe"
+                title={`${cardsRemaining} / ${totalShoeCards} cards remaining in ${rules.numDecks}-deck shoe (Reshuffles at ${cutCardAt})`}
+              >
+                <div className="shoe-3d-body">
+                  <div className="shoe-top-lid" />
+                  <div className="shoe-front-plate">
+                    <div className="shoe-finger-cutout">
+                      <div
+                        className="shoe-visible-cards"
+                        style={{ height: `${shoePercent}%` }}
+                      />
+                      <div
+                        className="shoe-cut-marker"
+                        style={{ bottom: `${cutCardPercent}%` }}
+                        title={`Cut Card (${Math.round(rules.penetration * 100)}%)`}
+                      />
                     </div>
                   </div>
                   <span className="equipment-badge">
@@ -289,21 +288,34 @@ export default function App() {
                 <ResultBanner result={state.result} />
               </div>
 
-              {/* 5. PLAYER HAND ZONE */}
-              <div className="player-zone" data-result={state.result}>
-                {state.phase !== 'idle' && (
-                  <Hand
-                    title={
-                      state.result === 'win' ? 'You win!' :
-                        state.result === 'blackjack' ? 'Blackjack! You win!' :
-                          state.result === 'lose' ? 'You lose' :
-                            state.result === 'push' ? 'Push — tie' :
-                              'You'
-                    }
-                    cards={state.playerHand}
-                  />
-                )}
-              </div>
+              <text className="felt-text-blackjack">
+                <textPath
+                  href="#blackjackCurve"
+                  startOffset="50%"
+                  textAnchor="middle"
+                >
+                  {blackjackPaysText}
+                </textPath>
+              </text>
+
+              <text className="felt-text-rules">
+                <textPath
+                  href="#dealerRulesCurve"
+                  startOffset="50%"
+                  textAnchor="middle"
+                >
+                  {dealerRuleText}
+                </textPath>
+              </text>
+
+              <text className="felt-text-insurance">
+                <textPath
+                  href="#insuranceCurve"
+                  startOffset="19%"
+                  textAnchor="middle"
+                >
+                  PAYS 2 TO 1
+                </textPath>
 
               {/* 6. BOTTOM BETTING BOXES */}
               <div className="betting-boxes-row">
@@ -389,11 +401,37 @@ export default function App() {
                 </>
               )}
 
-              {/* Live Coaching Banner during Player Turn */}
-              {state.phase === 'playerTurn' && analysis && (
-                <div className="trainer-coach">
-                  <strong>How to read this hand:</strong> Find your hand total on the left axis of the chart and cross-reference it with the Dealer&apos;s upcard (<strong>{state.dealerHand[0]?.rank}</strong>) across the top.
+            {/* 5. PLAYER HAND ZONE */}
+            <div className="player-zone" data-result={state.result}>
+              {state.splitHands.length > 0 ? (
+                <div className="split-hands" aria-label="Split hands">
+                  {state.splitHands.map((hand, index) => {
+                    const active = state.phase === 'playerTurn' && state.activeHandIndex === index;
+                    return (
+                      <div key={index} className={`split-hand${active ? ' split-hand--active' : ''}`}
+                        aria-current={active ? 'step' : undefined}>
+                        <Hand fromSplit cards={hand.cards}
+                          title={`Hand ${index + 1}${active ? ' — Playing' : ''}`} />
+                        <p className="split-hand__status">
+                          {!state.freePlay && `$${hand.bet} · `}
+                          {hand.result === 'win' ? 'Win' : hand.result === 'lose' ? 'Lose' :
+                            hand.result === 'push' ? 'Push' : hand.complete ? 'Finished' : active ? 'Your turn' : 'Waiting'}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
+              ) : state.phase !== 'idle' && (
+                <Hand
+                  title={
+                    state.result === 'win' ? 'You win!' :
+                      state.result === 'blackjack' ? 'Blackjack! You win!' :
+                        state.result === 'lose' ? 'You lose' :
+                          state.result === 'push' ? 'Push — tie' :
+                            'You'
+                  }
+                  cards={state.playerHand}
+                />
               )}
 
               <ResultBanner result={state.result} />
@@ -457,8 +495,26 @@ export default function App() {
               </div>
             </aside>
           </div>
-        </main>
-    )}
-  </>
+        </div>
+      </div>
+
+      <Controls
+        phase={state.phase}
+        balance={state.balance}
+        currentBet={state.currentBet}
+        bailoutTriggered={state.bailoutTriggered}
+        freePlay={state.freePlay}
+        onToggleFreePlay={(enabled) => dispatch({ type: "SET_FREE_PLAY", enabled })}
+        onPlaceBet={(amount) => dispatch({ type: "PLACE_BET", amount })}
+        onClearBet={() => dispatch({ type: "CLEAR_BET" })}
+        onDeal={() => dispatch(createDealAction(state.rules))}
+        onHit={() => dispatch({ type: "HIT" })}
+        onStand={() => dispatch({ type: "STAND" })}
+        onDouble={() => dispatch({ type: "DOUBLE" })}
+        canDouble={doubleAvailable}
+        canSplit={canSplit(state)}
+        onSplit={() => dispatch({ type: "SPLIT" })}
+      />
+    </main>
   );
 }
