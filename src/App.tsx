@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer } from 'react';
-import { canDouble, createDealAction, gameReducer, initialState } from './engine/game';
+import { canDouble, canSplit, createDealAction, gameReducer, initialState } from './engine/game';
 import { reshuffleThreshold } from './engine/rules';
 import { analyzeHand } from './engine/strategy';
 import { useAuth } from './AuthContext';
@@ -49,7 +49,10 @@ export default function App() {
   const cardsRemaining = state.deck.length > 0 ? state.deck.length : totalShoeCards;
 
   // Only count cards as discarded after the round is completed/settled
-  const cardsUsedInCurrentHand = state.phase !== 'idle' ? state.playerHand.length + state.dealerHand.length : 0;
+  const playerCardCount = state.splitHands.length > 0
+    ? state.splitHands.reduce((total, hand) => total + hand.cards.length, 0)
+    : state.playerHand.length;
+  const cardsUsedInCurrentHand = state.phase !== 'idle' ? playerCardCount + state.dealerHand.length : 0;
   const discardedCards = state.phase === 'done'
     ? totalShoeCards - cardsRemaining
     : Math.max(0, (totalShoeCards - cardsRemaining) - cardsUsedInCurrentHand);
@@ -263,7 +266,25 @@ export default function App() {
 
             {/* 5. PLAYER HAND ZONE */}
             <div className="player-zone" data-result={state.result}>
-              {state.phase !== 'idle' && (
+              {state.splitHands.length > 0 ? (
+                <div className="split-hands" aria-label="Split hands">
+                  {state.splitHands.map((hand, index) => {
+                    const active = state.phase === 'playerTurn' && state.activeHandIndex === index;
+                    return (
+                      <div key={index} className={`split-hand${active ? ' split-hand--active' : ''}`}
+                        aria-current={active ? 'step' : undefined}>
+                        <Hand fromSplit cards={hand.cards}
+                          title={`Hand ${index + 1}${active ? ' — Playing' : ''}`} />
+                        <p className="split-hand__status">
+                          {!state.freePlay && `$${hand.bet} · `}
+                          {hand.result === 'win' ? 'Win' : hand.result === 'lose' ? 'Lose' :
+                            hand.result === 'push' ? 'Push' : hand.complete ? 'Finished' : active ? 'Your turn' : 'Waiting'}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : state.phase !== 'idle' && (
                 <Hand
                   title={
                     state.result === 'win' ? 'You win!' :
@@ -323,6 +344,8 @@ export default function App() {
         onStand={() => dispatch({ type: "STAND" })}
         onDouble={() => dispatch({ type: "DOUBLE" })}
         canDouble={doubleAvailable}
+        canSplit={canSplit(state)}
+        onSplit={() => dispatch({ type: "SPLIT" })}
       />
     </main>
   );
