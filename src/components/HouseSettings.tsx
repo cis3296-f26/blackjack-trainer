@@ -41,7 +41,7 @@ interface ChoiceGroupProps<T> {
   onSelect: (value: T) => void;
 }
 
-// One labelled row of mutually exclusive buttons, styled like the Betting / Free play toggle
+// One labelled row of mutually exclusive buttons, styled like the Betting / Free Play toggle
 function ChoiceGroup<T extends string | number | boolean>({
   label,
   choices,
@@ -72,7 +72,7 @@ function ChoiceGroup<T extends string | number | boolean>({
   );
 }
 
-// Gear button plus a modal for the casino-specific table settings
+// Table-rules button plus a native modal for casino-specific settings.
 export default function HouseSettings({ rules, canEdit, onChange }: HouseSettingsProps) {
   const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -93,13 +93,13 @@ export default function HouseSettings({ rules, canEdit, onChange }: HouseSetting
     <>
       <button
         type="button"
-        className="house-settings__toggle"
+        className="button button--secondary house-settings__toggle"
         onClick={() => setOpen(true)}
-        aria-label="House settings"
+        aria-label="Table rules"
         aria-haspopup="dialog"
-        title="House Settings"
+        title="Table rules"
       >
-        ⚙
+        Table rules
       </button>
 
       <dialog
@@ -114,12 +114,12 @@ export default function HouseSettings({ rules, canEdit, onChange }: HouseSetting
       >
         <div className="house-settings__panel">
           <div className="house-settings__header">
-            <h2 id="house-settings-title">House Settings</h2>
+            <h2 id="house-settings-title">Table rules</h2>
             <button
               type="button"
               className="house-settings__close"
               onClick={() => setOpen(false)}
-              aria-label="Close house settings"
+              aria-label="Close table rules"
             >
               ×
             </button>
@@ -127,7 +127,7 @@ export default function HouseSettings({ rules, canEdit, onChange }: HouseSetting
 
           {!canEdit && (
             <p className="house-settings__notice">
-              Finish the current hand to change house settings.
+              Finish this hand to change table rules.
             </p>
           )}
 
@@ -173,12 +173,13 @@ export default function HouseSettings({ rules, canEdit, onChange }: HouseSetting
 
             <div className="house-settings__field">
               <label htmlFor="house-settings-penetration" className="house-settings__label">
-                Shoe penetration
+                Reshuffle after {toPercent(rules.penetration)}% dealt
               </label>
               <div className="house-settings__slider">
                 <input
                   id="house-settings-penetration"
                   type="range"
+                  aria-valuetext={`${toPercent(rules.penetration)} percent dealt`}
                   min={toPercent(PENETRATION_MIN)}
                   max={toPercent(PENETRATION_MAX)}
                   step={toPercent(PENETRATION_STEP)}
@@ -192,7 +193,7 @@ export default function HouseSettings({ rules, canEdit, onChange }: HouseSetting
               </div>
             </div>
             <p className="house-settings__help">
-              Reshuffles with ~{reshuffleThreshold(rules)} cards left in the shoe.
+              About {reshuffleThreshold(rules)} cards remain before reshuffling.
             </p>
           </section>
 
@@ -237,15 +238,17 @@ export default function HouseSettings({ rules, canEdit, onChange }: HouseSetting
             </ul>
           </section>
 
+          <p className="house-settings__help">Changes save automatically on this device.</p>
           <div className="house-settings__footer">
             <button
               type="button"
-              className="house-settings__reset"
+              className="button button--secondary"
               disabled={!canEdit || isDefault}
               onClick={() => onChange(DEFAULT_HOUSE_RULES)}
             >
-              Reset to defaults
+              Reset defaults
             </button>
+            <button type="button" className="button button--primary" onClick={() => setOpen(false)}>Done</button>
           </div>
         </div>
       </dialog>

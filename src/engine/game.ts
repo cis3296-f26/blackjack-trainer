@@ -18,6 +18,14 @@ export type Phase = "idle" | "playerTurn" | "dealerTurn" | "done";
 
 export type Result = "win" | "lose" | "push" | "blackjack" | "surrender";
 
+export interface RoundSummary {
+  wager: number;
+  returned: number;
+  profit: number;
+  bailout: number;
+  freePlay: boolean;
+}
+
 export interface SplitHand {
   cards: Card[];
   bet: number;
@@ -39,6 +47,7 @@ export interface GameState {
   bailoutTriggered?: boolean;
   doubled: boolean;
   lastbet: number;
+  lastRound: RoundSummary | null;
   freePlay: boolean; // no chips at stake; the bankroll is left untouched until betting resumes
   rules: HouseRules;
 }
@@ -47,6 +56,7 @@ export interface GameState {
 // Use createDealAction() in the UI; tests can pass a stacked deck instead.
 export type GameAction =
   | { type: 'DEAL'; deck: Card[] }
+  | { type: 'REBET_AND_DEAL'; deck: Card[] }
   | { type: 'HIT' }
   | { type: 'STAND' }
   | { type: 'DOUBLE' }
@@ -70,11 +80,13 @@ export const initialState: GameState = {
   bailoutTriggered: false,
   doubled: false,
   lastbet: 0,
+  lastRound: null,
   freePlay: false,
   rules: DEFAULT_HOUSE_RULES,
 };
 
-function activeBet(state: GameState): number {
+// The stake on the hand the controls act on (one split hand, or the whole bet)
+export function activeBet(state: GameState): number {
   return state.splitHands[state.activeHandIndex]?.bet ?? state.currentBet;
 }
 
@@ -96,8 +108,29 @@ export function canSurrender(state: GameState): boolean {
 }
 
 // Supplies a freshly shuffled shoe for the current house rules; DEAL only uses it once the current shoe hits the cut card
-export function createDealAction(rules: HouseRules = DEFAULT_HOUSE_RULES): GameAction {
-  return { type: "DEAL", deck: shuffle(createShoe(rules.numDecks)) };
+export function createDealAction(
+  rules: HouseRules = DEFAULT_HOUSE_RULES,
+  type: 'DEAL' | 'REBET_AND_DEAL' = 'DEAL',
+): GameAction {
+  return { type, deck: shuffle(createShoe(rules.numDecks)) };
+}
+
+export function openingWager(state: GameState): number {
+  return state.lastbet / (state.doubled ? 2 : 1);
+}
+
+export function canRebet(state: GameState): boolean {
+  const amount = openingWager(state);
+  return state.phase === 'done' && !state.freePlay && state.currentBet === 0 &&
+    amount > 0 && state.balance >= amount;
+}
+
+// Shared by settlement and the UI so displayed winnings use the same rounding.
+export function returnedChips(wager: number, result: Result, payout: BlackjackPayout = '3:2'): number {
+  if (result === 'blackjack') return wager + blackjackProfit(wager, payout);
+  if (result === 'win') return wager * 2;
+  if (result === 'push') return wager;
+  return 0;
 }
 
 // Doubling is only allowed on the first two cards, only on totals the house allows,
@@ -107,7 +140,7 @@ export function canDouble(state: GameState): boolean {
     state.phase === "playerTurn" &&
     state.playerHand.length === 2 &&
     doubleAllowedOnTotal(handValue(state.playerHand).total, state.rules.doubleOn) &&
-    (state.freePlay || state.balance >= state.currentBet)
+    (state.freePlay || state.balance >= activeBet(state))
   );
 }
 
@@ -144,23 +177,31 @@ function finish(state: GameState, earlyResult?: 'surrender'): GameState {
       // A two-card 21 after a split is a regular 21, not a natural blackjack.
       result: decideResult(hand.cards, state.dealerHand, true),
     }));
-    let returned = 0;
-    let profit = 0;
-    for (const hand of splitHands) {
-      const payout = hand.result === 'win' ? 2 : hand.result === 'push' ? 1 : 0;
-      returned += hand.bet * payout;
-      profit += state.freePlay ? payout - 1 : hand.bet * (payout - 1);
-    }
+    // Free play has no chips, so the overall result counts hands won minus hands lost
+    const score = splitHands.reduce((total, hand) =>
+      total + (hand.result === 'win' ? 1 : hand.result === 'lose' ? -1 : 0), 0);
+    const wager = splitHands.reduce((total, hand) => total + hand.bet, 0);
+    const returned = splitHands.reduce((total, hand) =>
+      total + returnedChips(hand.bet, hand.result!, state.rules.blackjackPayout), 0);
+    const profit = returned - wager;
     const balance = state.freePlay ? state.balance : state.balance + returned;
     const bailoutTriggered = !state.freePlay && balance <= 0;
+    const net = state.freePlay ? score : profit;
+    // Rebet repeats the bet placed before the split, not the combined stake
+    const first = splitHands[0];
+    const openingBet = first.doubled ? first.bet / 2 : first.bet;
     return {
       ...state,
       splitHands,
       phase: 'done',
-      result: profit > 0 ? 'win' : profit < 0 ? 'lose' : 'push',
+      result: net > 0 ? 'win' : net < 0 ? 'lose' : 'push',
       balance: bailoutTriggered ? BANKRUPT_BAILOUT : balance,
       currentBet: 0,
-      lastbet: state.freePlay ? 0 : state.currentBet,
+      doubled: false,
+      lastbet: state.freePlay ? 0 : openingBet,
+      lastRound: state.freePlay
+        ? { wager: 0, returned: 0, profit: 0, bailout: 0, freePlay: true }
+        : { wager, returned, profit, bailout: bailoutTriggered ? BANKRUPT_BAILOUT : 0, freePlay: false },
       bailoutTriggered,
     };
   }
@@ -173,6 +214,7 @@ function finish(state: GameState, earlyResult?: 'surrender'): GameState {
       phase: "done",
       result,
       lastbet: 0,
+      lastRound: { wager: 0, returned: 0, profit: 0, bailout: 0, freePlay: true },
       bailoutTriggered: false,
     };
   }
@@ -190,6 +232,13 @@ function finish(state: GameState, earlyResult?: 'surrender'): GameState {
     result,
     balance: nextBalance,
     lastbet: state.currentBet,
+    lastRound: {
+      wager: state.currentBet,
+      returned: returnedChips(state.currentBet, result, state.rules.blackjackPayout),
+      profit: returnedChips(state.currentBet, result, state.rules.blackjackPayout) - state.currentBet,
+      bailout: bailoutTriggered ? BANKRUPT_BAILOUT : 0,
+      freePlay: false,
+    },
     currentBet: 0,
     bailoutTriggered,
   };
@@ -236,6 +285,15 @@ function dealerPlays(state: GameState): GameState {
 }
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
+    case 'REBET_AND_DEAL': {
+      if (!canRebet(state)) return state;
+      const amount = openingWager(state);
+      return gameReducer({
+        ...state,
+        balance: state.balance - amount,
+        currentBet: amount,
+      }, { type: 'DEAL', deck: action.deck });
+    }
     case "DEAL": {
       // Can't deal in the middle of a hand
       if (
@@ -267,8 +325,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         result: null,
         balance: state.balance,
         currentBet: state.currentBet,
-        bailoutTriggered: state.bailoutTriggered,
+        bailoutTriggered: false,
         lastbet: state.lastbet,
+        lastRound: null,
         doubled: false,
         freePlay: state.freePlay,
         rules: state.rules,

@@ -35,11 +35,21 @@ Then open the address it prints (usually http://localhost:5173) in your browser.
 
 How to play:
 
-1. Click Deal to start a hand.
-2. Click Hit to take another card, or Stand to keep your hand.
-3. The dealer then reveals their hidden card and draws until reaching 17 or more.
-4. The result appears: win, lose, push (tie), or blackjack. Click New Hand to play again.
+1. Log in or create an account, then select chips and click **Deal $amount**. Choose **Free Play** between hands to practice without betting.
+2. **Hit** takes another card; **Stand** lets the dealer play. **Double** adds the same wager, takes one final card, and stands. It is available on the first two cards when you have enough chips (or without chips in Free Play).
+3. Open **Show hint** for a recommendation. **Compare moves** explains the expected return and outcome probabilities. Hints start hidden each hand.
+4. The result explains what happened and shows the bet, returned chips, and net gain/loss. **Rebet $amount & deal** repeats your opening wager, excluding any doubling. Use **Change bet** to choose a different amount, or **Next hand** in Free Play.
 
-When your first two cards have the same value, click Split to play two hands with matching bets. Your bankroll must cover the additional bet; splitting also works in Free Play. Play the highlighted hand first, then the second hand. You can double on either hand, but you can only split once per round. Split aces receive one card each and stand automatically. A split hand totaling 21 pays as a regular win, not a blackjack. Each hand shows its own result; the round banner reflects the combined outcome. Strategy hints still evaluate hit, stand, and double only; they do not recommend splitting yet.
+Open **Table rules** to choose 1, 2, 4, 6, or 8 decks and how much of the shoe is dealt before reshuffling. Settings save on this device and can be changed between hands; changing decks starts a fresh shoe. The dealer stands on all 17s, blackjack pays 3:2, and splitting, surrender, and insurance are not offered.
 
-To match the rules of a particular casino, click the ⚙ (House Settings) button in the top-left corner between hands. There you can choose the number of decks (1, 2, 4, 6, or 8) and how deep the dealer deals into the shoe before reshuffling. The panel also lists the table rules that are currently fixed.
+On desktop, the table and a compact control column share the available browser height, keeping betting and play actions on screen. Expanded guidance scrolls within its own panel. The table adapts to phones with readable cards and a sticky action area. Long hands scroll horizontally; focus a hand and use the arrow keys to see additional cards. **How to play** explains actions and hand totals. **Account** contains your name and Log out.
+
+## Checks
+
+```bash
+npm test
+npm run build
+npm run lint
+```
+
+Tests cover strategy recommendations, settlement summaries, rebet guards and doubled wagers, free play, and shoe indicators for each deck setting.

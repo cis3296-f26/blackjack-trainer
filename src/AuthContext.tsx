@@ -1,31 +1,15 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { 
   type User,
-  type UserCredential,
   onAuthStateChanged, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut,
+  updateProfile,
 } from "firebase/auth";
 import { auth } from "./firebase";
 
-interface AuthContextType {
-  currentUser: User | null;
-  loading: boolean;
-  signup: (email: string, password: string) => Promise<UserCredential>;
-  login: (email: string, password: string) => Promise<UserCredential>;
-  logout: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextType | null>(null);
-
-export function useAuth(): AuthContextType {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-}
+import { AuthContext, type AuthContextType } from './auth';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -34,9 +18,20 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const creatingAccount = useRef(false);
 
-  function signup(email: string, password: string) {
-    return createUserWithEmailAndPassword(auth, email, password);
+  async function signup(email: string, password: string, displayName?: string) {
+    // Publish the signed-in user after their name is saved, so the table receives
+    // the completed profile instead of briefly mounting with only an email.
+    creatingAccount.current = true;
+    try {
+      const credential = await createUserWithEmailAndPassword(auth, email, password);
+      if (displayName) await updateProfile(credential.user, { displayName });
+      return credential;
+    } finally {
+      creatingAccount.current = false;
+      setCurrentUser(auth.currentUser);
+    }
   }
 
   function login(email: string, password: string) {
@@ -49,7 +44,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
+      if (!creatingAccount.current) setCurrentUser(user);
       setLoading(false);
     });
 
@@ -66,7 +61,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {loading ? <div className="auth-page" role="status">Opening your table…</div> : children}
     </AuthContext.Provider>
   );
 }

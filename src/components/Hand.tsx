@@ -27,9 +27,9 @@ export default function Hand({ title, cards, hideHoleCard = false, fromSplit = f
     <section className="hand">
       <h2 className="hand__title">
         {title}
-        {cards.length > 0 && <span className="hand__total">{describeTotal(visibleCards, fromSplit)}</span>}
+        {cards.length > 0 && <span className="hand__total">{hideHoleCard ? `Showing ${describeTotal(visibleCards, fromSplit)}` : describeTotal(visibleCards, fromSplit)}</span>}
       </h2>
-      <div className="hand__cards">
+      <div className="hand__cards" tabIndex={0} role="group" aria-label={`${title} cards`}>
         {cards.map((card, i) => (
           <Card
             key={`${card.rank}-${card.suit}-${i}`}
