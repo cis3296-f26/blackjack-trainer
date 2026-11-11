@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { loadEngine } from './loadEngine.mjs';
 
-const { gameReducer, initialState, canDouble } = await loadEngine('game');
+const { gameReducer, initialState, canDouble, canSplit } = await loadEngine('game');
 const { DEFAULT_HOUSE_RULES, normalizeHouseRules, blackjackProfit } = await loadEngine('rules');
 const { profit_hand } = await loadEngine('stat');
 
@@ -17,6 +17,41 @@ function dealHand(ranks, rules = {}) {
     state = gameReducer(state, { type: 'PLACE_BET', amount: 5 });
     return gameReducer(state, { type: 'DEAL', deck: stack(...ranks) });
 }
+
+test('canSplit requires an affordable initial equal-value pair and forbids resplitting', () => {
+    const pair = dealHand(['8', '10', '8', '7', '3', '2']);
+    assert.equal(canSplit(pair), true);
+    assert.equal(canSplit(dealHand(['K', '10', 'Q', '7'])), true);
+    for (const state of [
+        initialState,
+        { ...pair, phase: 'done' },
+        { ...pair, balance: 9 },
+        dealHand(['8', '10', '9', '7']),
+        gameReducer(pair, { type: 'HIT' }),
+        gameReducer(pair, { type: 'SPLIT' }),
+    ]) {
+        assert.equal(canSplit(state), false);
+        assert.strictEqual(gameReducer(state, { type: 'SPLIT' }), state);
+    }
+    assert.equal(canSplit({ ...pair, balance: 10 }), true);
+    assert.equal(canSplit({ ...pair, balance: 0, currentBet: 0, freePlay: true }), true);
+});
+
+test('doubling after a split uses the active hand bet while respecting house rules', () => {
+    let state = gameReducer(dealHand(['8', '10', '8', '7', '3', '2', '10']), { type: 'SPLIT' });
+    state = { ...state, balance: 10 };
+    assert.equal(state.currentBet, 20);
+    assert.equal(canDouble(state), true);
+    assert.equal(canDouble({ ...state, balance: 9 }), false);
+    assert.equal(canDouble({ ...state, rules: { ...state.rules, doubleOn: '10-11' } }), true);
+    state = gameReducer(state, { type: 'DOUBLE' });
+    assert.equal(state.balance, 0);
+    assert.equal(state.currentBet, 30);
+    assert.equal(state.activeHandIndex, 1);
+    assert.deepEqual(state.splitHands.map((hand) => hand.bet), [20, 10]);
+    assert.equal(canDouble({ ...state, balance: 10, rules: { ...state.rules, doubleOn: '10-11' } }), true);
+    assert.equal(canDouble({ ...state, balance: 10, rules: { ...state.rules, doubleOn: '9-11' }, playerHand: stack('2', '3') }), false);
+});
 
 test('dealer stands on soft 17 under S17', () => {
     // Player 10+8 = 18, dealer A+6 = soft 17, next card a 2
