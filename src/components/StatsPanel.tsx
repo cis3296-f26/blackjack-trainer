@@ -10,7 +10,7 @@ interface Stats_Panel_Props {
   stats: Stats;
 }
 const money = (n: number) => `${n < 0 ? "-" : ""}$${Math.abs(n).toFixed(2)}`;
-const pct = (n: number) => "${(n* 100),toFixed(1)}%";
+const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
 const streak = (n: number) => (n > 0 ? `${n}W` : n < 0 ? `${-n}L` : "-");
 
 export default function StatsPanel({ stats }: Stats_Panel_Props) {
@@ -18,7 +18,7 @@ export default function StatsPanel({ stats }: Stats_Panel_Props) {
     return (
       <section className="stats-panel" aria-label="Session stats">
         <h2 className="stats-panel__title">Session Stats</h2>
-        <p className="stats-panel_-empty">
+        <p className="stats-panel__empty">
           Play a hand with a bet to see your stats.
         </p>
       </section>
