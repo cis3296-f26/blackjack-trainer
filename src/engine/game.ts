@@ -73,6 +73,19 @@ export const initialState: GameState = {
   rules: DEFAULT_HOUSE_RULES,
 };
 
+function activeBet(state: GameState): number {
+  return state.splitHands[state.activeHandIndex]?.bet ?? state.currentBet;
+}
+
+// One split per round; any two ten-value cards are also eligible.
+export function canSplit(state: GameState): boolean {
+  const [first, second] = state.playerHand;
+  const value = (card: Card) => ['10', 'J', 'Q', 'K'].includes(card.rank) ? '10' : card.rank;
+  return state.phase === 'playerTurn' && state.splitHands.length === 0 &&
+    state.playerHand.length === 2 && value(first) === value(second) &&
+    (state.freePlay || state.balance >= state.currentBet);
+}
+
 // Supplies a freshly shuffled shoe for the current house rules; DEAL only uses it once the current shoe hits the cut card
 export function createDealAction(rules: HouseRules = DEFAULT_HOUSE_RULES): GameAction {
   return { type: "DEAL", deck: shuffle(createShoe(rules.numDecks)) };
