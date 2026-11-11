@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   DECK_OPTIONS,
   DEFAULT_HOUSE_RULES,
-  FIXED_TABLE_RULES,
+  describeRules,
   PENETRATION_MAX,
   PENETRATION_MIN,
   PENETRATION_STEP,
@@ -126,7 +126,7 @@ export default function HouseSettings({ rules, canEdit, onChange }: HouseSetting
           <section className="house-settings__section">
             <h3>Table rules</h3>
             <ul className="house-settings__rules">
-              {FIXED_TABLE_RULES.map((rule) => (
+              {describeRules(rules).map((rule) => (
                 <li key={rule}>{rule}</li>
               ))}
             </ul>

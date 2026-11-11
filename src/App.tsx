@@ -34,9 +34,9 @@ export default function App() {
   const analysis = useMemo(
   () =>
     state.phase === 'playerTurn'
-      ? analyzeHand(state.playerHand, state.dealerHand[0], doubleAvailable, state.rules.numDecks)
+      ? analyzeHand(state.playerHand, state.dealerHand[0], state.rules, doubleAvailable)
       : null,
-  [state.phase, state.playerHand, state.dealerHand, doubleAvailable, state.rules.numDecks],
+  [state.phase, state.playerHand, state.dealerHand, doubleAvailable, state.rules],
 );
 
   // Hooks above must run on every render, so the login gate comes after them

@@ -3,7 +3,10 @@ import { createShoe, draw, shuffle } from './shoe';
 import {
   DEFAULT_HOUSE_RULES,
   MIN_CARDS_BEFORE_RESHUFFLE,
+  blackjackProfit,
+  doubleAllowedOnTotal,
   reshuffleThreshold,
+  type BlackjackPayout,
   type HouseRules,
 } from './rules';
 import { handValue, isBlackjack, isBust } from './hand';
@@ -62,13 +65,21 @@ export function createDealAction(rules: HouseRules = DEFAULT_HOUSE_RULES): GameA
   return { type: "DEAL", deck: shuffle(createShoe(rules.numDecks)) };
 }
 
-// Doubling is only allowed on the first two cards, and in betting mode only if the balance covers the extra bet
+// Doubling is only allowed on the first two cards, only on totals the house allows,
+// and in betting mode only if the balance covers the extra bet
 export function canDouble(state: GameState): boolean {
   return (
     state.phase === "playerTurn" &&
     state.playerHand.length === 2 &&
+    doubleAllowedOnTotal(handValue(state.playerHand).total, state.rules.doubleOn) &&
     (state.freePlay || state.balance >= state.currentBet)
   );
+}
+
+// The dealer draws to 16 and stands on 17, except a soft 17 under H17 rules
+export function dealerShouldHit(dealerHand: Card[], rules: HouseRules): boolean {
+  const { total, soft } = handValue(dealerHand);
+  return total < 17 || (total === 17 && soft && rules.dealerHitsSoft17);
 }
 
 // Decides the outcome from the player's point of view once the hand is over
@@ -108,6 +119,7 @@ function finish(state: GameState): GameState {
     state.balance,
     state.currentBet,
     result,
+    state.rules.blackjackPayout,
   );
 
   return {
@@ -123,7 +135,7 @@ function finish(state: GameState): GameState {
 function dealerPlays(state: GameState): GameState {
   let deck = state.deck;
   const dealerHand = [...state.dealerHand];
-  while (handValue(dealerHand).total < 17) {
+  while (dealerShouldHit(dealerHand, state.rules)) {
     const { card, rest } = draw(deck);
     dealerHand.push(card);
     deck = rest;
@@ -289,13 +301,14 @@ export function settleRoundBet(
   balance: number,
   currentBet: number,
   outcome: "blackjack" | "win" | "push" | "lose",
+  blackjackPayout: BlackjackPayout,
 ): { nextBalance: number; bailoutTriggered: boolean } {
   let nextBalance = balance;
 
   switch (outcome) {
     case "blackjack":
-      // Blackjack pays 3:2 (original bet returned + 1.5x winnings)
-      nextBalance += currentBet + Math.floor(currentBet * 1.5);
+      // Original bet returned + the house's blackjack payout (3:2, 6:5 or 1:1)
+      nextBalance += currentBet + blackjackProfit(currentBet, blackjackPayout);
       break;
     case "win":
       // Standard win pays 1:1 (original bet returned + 1x winnings)
