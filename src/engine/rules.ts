@@ -68,21 +68,70 @@ export const FIXED_TABLE_RULES: string[] = [
   'Splitting, surrender, and insurance are not offered',
 ];
 
-// Plain-English summary of the table rules (everything except the shoe settings)
-export function describeRules(rules: HouseRules): string[] {
-  return [
-    rules.dealerHitsSoft17 ? 'Dealer hits soft 17' : 'Dealer stands on all 17s',
-    `Blackjack pays ${rules.blackjackPayout}`,
-    rules.dealerPeeks
-      ? 'Dealer peeks for blackjack'
-      : 'No hole card: dealer blackjack takes all bets, including doubles',
-    {
-      any: 'Double on any first two cards',
-      '9-11': 'Double on hard 9, 10, or 11 only',
-      '10-11': 'Double on hard 10 or 11 only',
-    }[rules.doubleOn],
-    ...FIXED_TABLE_RULES,
-  ];
+// Penetration is compared in whole percents so float noise (0.7 vs 0.7000000001) doesn't matter
+const samePenetration = (a: number, b: number) => Math.round(a * 100) === Math.round(b * 100);
+
+export function rulesEqual(a: HouseRules, b: HouseRules): boolean {
+  return (
+    a.numDecks === b.numDecks &&
+    samePenetration(a.penetration, b.penetration) &&
+    a.dealerHitsSoft17 === b.dealerHitsSoft17 &&
+    a.blackjackPayout === b.blackjackPayout &&
+    a.dealerPeeks === b.dealerPeeks &&
+    a.doubleOn === b.doubleOn
+  );
+}
+
+export interface HouseRulePreset {
+  id: string;
+  name: string;
+  description: string;
+  rules: HouseRules;
+}
+
+// Typical rule sets for common kinds of tables, so a player can match their casino in one click
+export const HOUSE_RULE_PRESETS: HouseRulePreset[] = [
+  {
+    id: 'vegas-strip',
+    name: 'Vegas Strip',
+    description: '6 decks, dealer stands on soft 17, blackjack pays 3:2.',
+    rules: DEFAULT_HOUSE_RULES,
+  },
+  {
+    id: 'downtown-vegas',
+    name: 'Downtown Vegas',
+    description: 'Hand-pitched double deck, dealer hits soft 17, blackjack pays 3:2.',
+    rules: { ...DEFAULT_HOUSE_RULES, numDecks: 2, penetration: 0.65, dealerHitsSoft17: true },
+  },
+  {
+    id: 'atlantic-city',
+    name: 'Atlantic City',
+    description: '8 decks, dealer stands on soft 17, blackjack pays 3:2.',
+    rules: { ...DEFAULT_HOUSE_RULES, numDecks: 8 },
+  },
+  {
+    id: 'reno',
+    name: 'Reno',
+    description: '6 decks, dealer hits soft 17, double on 10 or 11 only.',
+    rules: { ...DEFAULT_HOUSE_RULES, dealerHitsSoft17: true, doubleOn: '10-11' },
+  },
+  {
+    id: 'low-limit-6-5',
+    name: 'Low-limit 6:5 single deck',
+    description: 'Single deck, shuffled at half, dealer hits soft 17, blackjack pays only 6:5.',
+    rules: {
+      ...DEFAULT_HOUSE_RULES,
+      numDecks: 1,
+      penetration: 0.5,
+      dealerHitsSoft17: true,
+      blackjackPayout: '6:5',
+    },
+  },
+];
+
+// The preset these rules match exactly, or undefined for a custom table
+export function findPreset(rules: HouseRules): HouseRulePreset | undefined {
+  return HOUSE_RULE_PRESETS.find((preset) => rulesEqual(preset.rules, rules));
 }
 
 // Cards left in the shoe when the cut card comes out. 6 decks at 75% gives 78.
