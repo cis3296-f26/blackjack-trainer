@@ -1,4 +1,5 @@
 import type { Card, Rank } from './types';
+import { doubleAllowedOnTotal, type HouseRules } from './rules';
 
 const RANKS: Rank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 // Index into RANKS
@@ -8,11 +9,14 @@ const RANK_VALUE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10];
 //   index 0..4 -> dealer finishes on 17, 18, 19, 20, 21 (so index = total - 17)
 //   index 5    -> dealer busts
 // BUST is the last slot. The dealer never finishes below 17 meaning they will keep hitting,
-// so there are no slots for lower totals.
+// so there are no slots for lower totals. (Under H17 a soft 17 keeps hitting too.)
 const BUST = 5; // dealer outcome slots: 0..4 = 17..21, 5 = bust
 
 //Accepted actions so far
 export type Action = 'hit' | 'stand' | 'double';
+
+// The house rules that change the math
+export type StrategyRules = Pick<HouseRules, 'numDecks' | 'dealerHitsSoft17' | 'doubleOn'>;
 
 export interface Outcome {
     ev: number; // expected profit per 1 unit bet: win = +1, lose = -1, push = 0
@@ -47,12 +51,14 @@ const addRank = (t: Total, r: number): Total => ({
     hasAce: t.hasAce || r === 0,
 });
 
-const bestTotal = (t: Total): number => (t.hasAce && t.hard + 10 <= 21 ? t.hard + 10 : t.hard);
+const isSoft = (t: Total): boolean => t.hasAce && t.hard + 10 <= 21;
+const bestTotal = (t: Total): number => (isSoft(t) ? t.hard + 10 : t.hard);
 
 //shared context + memo tables
 
 interface Ctx {
     upcard: number; // rank index
+    dealerHitsSoft17: boolean;
     dealerMemo: Map<string, number[]>;
     playerMemo: Map<string, Step>;
 }
@@ -70,7 +76,8 @@ function dealerFrom(hand: Total, counts: number[], ctx: Ctx): number[] {
         dist[BUST] = 1;
         return dist;
     }
-    if (total >= 17) {
+    const hitsSoft17 = total === 17 && ctx.dealerHitsSoft17 && isSoft(hand);
+    if (total >= 17 && !hitsSoft17) {
         dist[total - 17] = 1;
         return dist;
     }
@@ -165,17 +172,20 @@ function playerStep(hand: Total, counts: number[], ctx: Ctx): Step {
 
 // public API
 
+// `canDouble` is for limits outside the rules (e.g. the bankroll can't cover the extra bet);
+// the first-two-cards and doubleOn restrictions are checked here either way
 export function analyzeHand(
     playerHand: Card[],
     dealerUpcard: Card,
+    rules: StrategyRules,
     canDouble = true,
-    numDecks = 1,
 ): Analysis {
-    const counts = Array<number>(13).fill(4 * numDecks);
+    const counts = Array<number>(13).fill(4 * rules.numDecks);
     for (const c of [...playerHand, dealerUpcard]) counts[RANKS.indexOf(c.rank)]--;
 
     const ctx: Ctx = {
         upcard: RANKS.indexOf(dealerUpcard.rank),
+        dealerHitsSoft17: rules.dealerHitsSoft17,
         dealerMemo: new Map(),
         playerMemo: new Map(),
     };
@@ -183,7 +193,11 @@ export function analyzeHand(
     const hand = fromCards(playerHand);
     const step = playerStep(hand, counts, ctx);
     let double: Outcome | null = null;
-    if (canDouble && playerHand.length === 2) {
+    if (
+        canDouble &&
+        playerHand.length === 2 &&
+        doubleAllowedOnTotal(bestTotal(hand), rules.doubleOn)
+    ) {
         double = { ev: 0, win: 0, push: 0, lose: 0 };
         const n = sum(counts);
         for (let r = 0; r < RANKS.length; r++) {

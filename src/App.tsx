@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useReducer } from 'react';
 import { canDouble, createDealAction, gameReducer, initialState } from './engine/game';
 import { reshuffleThreshold } from './engine/rules';
-import { DEFAULT_SHOE_DECKS } from './engine/shoe';
 import { analyzeHand } from './engine/strategy';
 import { useAuth } from './AuthContext';
 import { loadHouseRules, saveHouseRules } from './houseRulesStorage';
@@ -34,9 +33,9 @@ export default function App() {
   const analysis = useMemo(
   () =>
     state.phase === 'playerTurn'
-      ? analyzeHand(state.playerHand, state.dealerHand[0], doubleAvailable, state.rules.numDecks)
+      ? analyzeHand(state.playerHand, state.dealerHand[0], state.rules, doubleAvailable)
       : null,
-  [state.phase, state.playerHand, state.dealerHand, doubleAvailable, state.rules.numDecks],
+  [state.phase, state.playerHand, state.dealerHand, doubleAvailable, state.rules],
 );
 
   // Hooks above must run on every render, so the login gate comes after them
@@ -44,7 +43,9 @@ export default function App() {
     return <AuthPage onSuccess={() => { }} />;
   }
 
-  const totalShoeCards = DEFAULT_SHOE_DECKS * 52; // 312
+  const { rules } = state;
+  const totalShoeCards = rules.numDecks * 52;
+  const cutCardAt = reshuffleThreshold(rules); // cards left when the cut card comes out
   const cardsRemaining = state.deck.length > 0 ? state.deck.length : totalShoeCards;
 
   // Only count cards as discarded after the round is completed/settled
@@ -55,6 +56,13 @@ export default function App() {
 
   const shoePercent = Math.max(0, Math.min(100, Math.round((cardsRemaining / totalShoeCards) * 100)));
   const discardPercent = Math.max(4, Math.min(100, Math.round((discardedCards / totalShoeCards) * 100)));
+  const cutCardPercent = Math.min(100, (cutCardAt / totalShoeCards) * 100);
+
+  // Felt lettering follows the house rules, e.g. "BLACKJACK PAYS 6 TO 5"
+  const blackjackPaysText = `BLACKJACK PAYS ${rules.blackjackPayout.replace(':', ' TO ')}`;
+  const dealerRuleText = rules.dealerHitsSoft17
+    ? 'Dealer must draw to 16 and hit soft 17'
+    : 'Dealer must draw to 16 and stand on all 17s';
 
   return (
     <main className="table">
@@ -108,10 +116,10 @@ export default function App() {
                 <div className="chip-tube tube--white-black" />
               </div>
 
-              {/* Top-Right: 3D Angled Matte Black 6-Deck Shoe */}
+              {/* Top-Right: 3D Angled Matte Black Shoe */}
               <div
                 className="black-dealing-shoe"
-                title={`${cardsRemaining} / ${totalShoeCards} cards remaining in 6-deck shoe (Reshuffles at ${reshuffleThreshold(state.rules)})`}
+                title={`${cardsRemaining} / ${totalShoeCards} cards remaining in ${rules.numDecks}-deck shoe (Reshuffles at ${cutCardAt})`}
               >
                 <div className="shoe-3d-body">
                   <div className="shoe-top-lid" />
@@ -121,7 +129,11 @@ export default function App() {
                         className="shoe-visible-cards"
                         style={{ height: `${shoePercent}%` }}
                       />
-                      <div className="shoe-cut-marker" title="Cut Card (75%)" />
+                      <div
+                        className="shoe-cut-marker"
+                        style={{ bottom: `${cutCardPercent}%` }}
+                        title={`Cut Card (${Math.round(rules.penetration * 100)}%)`}
+                      />
                     </div>
                   </div>
                 </div>
@@ -185,7 +197,7 @@ export default function App() {
                   startOffset="50%"
                   textAnchor="middle"
                 >
-                  BLACKJACK PAYS 3 TO 2
+                  {blackjackPaysText}
                 </textPath>
               </text>
 
@@ -195,7 +207,7 @@ export default function App() {
                   startOffset="50%"
                   textAnchor="middle"
                 >
-                  Dealer must draw to 16 and stand on all 17s
+                  {dealerRuleText}
                 </textPath>
               </text>
 

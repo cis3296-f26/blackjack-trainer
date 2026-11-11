@@ -15,8 +15,11 @@
 }
 
 /* Native modal; padding lives on the panel so backdrop clicks can be told apart */
+/* Scrolls on short screens now that there are several groups of settings */
 .house-settings__dialog {
-  width: min(92vw, 360px);
+  width: min(92vw, 380px);
+  max-height: 90vh;
+  overflow-y: auto;
   padding: 0;
   border: none;
   border-radius: 8px;
@@ -67,17 +70,50 @@
   margin-top: 1rem;
 }
 
+/* Group headings (Shoe, Dealer, ...) with a divider so the groups read as separate blocks */
 .house-settings__section h3 {
   margin: 0 0 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid rgba(245, 197, 66, 0.3);
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   opacity: 0.75;
 }
 
-/* Deck buttons share the .mode-toggle look from Controls.css; just make them equal width */
+/* One setting inside a group: a small label above its control */
+.house-settings__field + .house-settings__field,
+.house-settings__help + .house-settings__field {
+  margin-top: 0.75rem;
+}
+
+.house-settings__label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.9rem;
+}
+
+/* Option buttons share the .mode-toggle look from Controls.css; just make them equal width */
 .house-settings__section .mode-toggle button {
   flex: 1;
+  padding-inline: 0.5rem;
+}
+
+.house-settings__select {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.95rem;
+  font-weight: bold;
+  border: 1px solid #f5c542;
+  border-radius: 6px;
+  background: #111;
+  color: #f5c542;
+  cursor: pointer;
+}
+
+.house-settings__select:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .house-settings__slider {
@@ -108,7 +144,7 @@
 }
 
 .house-settings__rules {
-  margin: 0;
+  margin: 0.75rem 0 0;
   padding-left: 1.2rem;
   font-size: 0.9rem;
 }
