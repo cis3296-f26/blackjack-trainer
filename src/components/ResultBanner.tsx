@@ -10,6 +10,7 @@ const MESSAGES: Record<Result, string> = {
   win: 'You win!',
   lose: 'You lose.',
   push: "Push. It's a tie.",
+  surrender: 'You surrendered.',
 };
 
 // Shows the outcome once the hand is over; renders nothing while a hand is in play

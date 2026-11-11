@@ -9,6 +9,8 @@ interface ControlsProps {
   bailoutTriggered?: boolean;
   canDouble: boolean;
   canSplit: boolean;
+  canSurrender: boolean;
+  onSurrender: () => void;
   freePlay: boolean;
   onToggleFreePlay: (enabled: boolean) => void;
   onPlaceBet: (amount: ChipValue) => void;
@@ -28,6 +30,8 @@ export default function Controls({
   bailoutTriggered = false,
   canDouble,
   canSplit,
+  canSurrender,
+  onSurrender,
   freePlay,
   onToggleFreePlay,
   onPlaceBet,
@@ -133,6 +137,9 @@ export default function Controls({
         </button>
         <button type="button" onClick={onSplit} disabled={!canSplit}>
           Split
+        </button>
+        <button type="button" onClick={onSurrender} disabled={!canSurrender}>
+          Surrender
         </button>
       </div>
     </div>

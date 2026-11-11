@@ -13,10 +13,10 @@ import { handValue, isBlackjack, isBust } from './hand';
 import { INITIAL_BALANCE, BANKRUPT_BAILOUT, type ChipValue } from './types';
 
 // 'dealerTurn' is part of the model, but for now the dealer plays instantly inside STAND,
-// so the state never rests in it. It's there for later (e.g. animating dealer draws).
+// so the state never rests i n it. It's there for later (e.g. animating dealer draws).
 export type Phase = "idle" | "playerTurn" | "dealerTurn" | "done";
 
-export type Result = "win" | "lose" | "push" | "blackjack";
+export type Result = "win" | "lose" | "push" | "blackjack" | "surrender";
 
 export interface SplitHand {
   cards: Card[];
@@ -54,7 +54,8 @@ export type GameAction =
   | { type: 'PLACE_BET'; amount: ChipValue }
   | { type: 'CLEAR_BET' }
   | { type: 'SET_FREE_PLAY'; enabled: boolean }
-  | { type: 'SET_HOUSE_RULES'; rules: HouseRules };
+  | { type: 'SET_HOUSE_RULES'; rules: HouseRules }
+  | { type: 'SURRENDER' };
 
 export const initialState: GameState = {
   deck: [],
@@ -84,6 +85,14 @@ export function canSplit(state: GameState): boolean {
   return state.phase === 'playerTurn' && state.splitHands.length === 0 &&
     state.playerHand.length === 2 && value(first) === value(second) &&
     (state.freePlay || state.balance >= state.currentBet);
+}
+
+export function canSurrender(state: GameState): boolean {
+  return (
+    state.phase === 'playerTurn' &&
+    state.playerHand.length === 2 &&
+    state.splitHands.length === 0
+  );
 }
 
 // Supplies a freshly shuffled shoe for the current house rules; DEAL only uses it once the current shoe hits the cut card
@@ -127,7 +136,7 @@ export function decideResult(playerHand: Card[], dealerHand: Card[], fromSplit =
 }
 
 // Ends the hand: reveals everything and records the result
-function finish(state: GameState): GameState {
+function finish(state: GameState, earlyResult?: 'surrender'): GameState {
   if (state.splitHands.length > 0) {
     const splitHands = state.splitHands.map((hand) => ({
       ...hand,
@@ -155,7 +164,7 @@ function finish(state: GameState): GameState {
       bailoutTriggered,
     };
   }
-  const result = decideResult(state.playerHand, state.dealerHand);
+  const result = earlyResult ?? decideResult(state.playerHand, state.dealerHand);
 
   // Free play has nothing to settle, so the balance stays as it was
   if (state.freePlay) {
@@ -206,8 +215,10 @@ function completeActiveHand(state: GameState): GameState {
     ? { ...hand, complete: true } : hand);
   const nextIndex = splitHands.findIndex((hand) => !hand.complete);
   if (nextIndex !== -1) {
-    return { ...saved, splitHands, activeHandIndex: nextIndex,
-      playerHand: splitHands[nextIndex].cards, doubled: splitHands[nextIndex].doubled };
+    return {
+      ...saved, splitHands, activeHandIndex: nextIndex,
+      playerHand: splitHands[nextIndex].cards, doubled: splitHands[nextIndex].doubled
+    };
   }
   const next = { ...saved, splitHands };
   return splitHands.every((hand) => isBust(hand.cards)) ? finish(next) : dealerPlays(next);
@@ -282,6 +293,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       // A bust completes this hand and advances to any remaining split hand.
       if (isBust(next.playerHand)) return completeActiveHand(next);
       return saveActiveHand(next);
+    }
+
+    case "SURRENDER": {
+      if (!canSurrender(state)) return state;
+      return finish(state, 'surrender');
     }
 
     case "STAND": {
@@ -410,7 +426,7 @@ export const initialBettingState = {
 export function settleRoundBet(
   balance: number,
   currentBet: number,
-  outcome: "blackjack" | "win" | "push" | "lose",
+  outcome: Result,
   blackjackPayout: BlackjackPayout,
 ): { nextBalance: number; bailoutTriggered: boolean } {
   let nextBalance = balance;
@@ -427,6 +443,9 @@ export function settleRoundBet(
     case "push":
       // Tie returns the original bet
       nextBalance += currentBet;
+      break;
+    case "surrender":
+      nextBalance += Math.floor(currentBet / 2);
       break;
     case "lose":
       // Bet was already deducted from balance when placed

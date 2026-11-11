@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useReducer } from 'react';
-import { canDouble, canSplit, createDealAction, gameReducer, initialState } from './engine/game';
+import { canDouble, canSplit, canSurrender, createDealAction, gameReducer, initialState } from './engine/game';
 import { reshuffleThreshold } from './engine/rules';
 import { analyzeHand } from './engine/strategy';
 import { useAuth } from './AuthContext';
@@ -17,7 +17,7 @@ import MainMenu from './components/MainMenu';
 
 // Top-level screen: owns the game state and passes pieces of it down to components
 export default function App() {
-  const { currentUser, logout }= useAuth();
+  const { currentUser, logout } = useAuth();
   const [inSimulation, setInSimulation] = useState(false);
   const [inTrainer, setInTrainer] = useState(false);
   // Start with the house rules saved from the last visit
@@ -35,12 +35,12 @@ export default function App() {
   const doubleAvailable = canDouble(state);
 
   const analysis = useMemo(
-  () =>
-    state.phase === 'playerTurn'
-      ? analyzeHand(state.playerHand, state.dealerHand[0], state.rules, doubleAvailable)
-      : null,
-  [state.phase, state.playerHand, state.dealerHand, doubleAvailable, state.rules],
-);
+    () =>
+      state.phase === 'playerTurn'
+        ? analyzeHand(state.playerHand, state.dealerHand[0], state.rules, doubleAvailable)
+        : null,
+    [state.phase, state.playerHand, state.dealerHand, doubleAvailable, state.rules],
+  );
 
   const simulationClicked = () => {
     setInTrainer(false);
@@ -61,7 +61,7 @@ export default function App() {
   if (!currentUser) {
     return <AuthPage onSuccess={() => { }} />;
   }
-  
+
   if (!inSimulation && !inTrainer) {
     return (
       <>
@@ -73,10 +73,10 @@ export default function App() {
             Log Out
           </button>
         </div>
-        <MainMenu 
-          onStartSimulation={() => setInSimulation(true)} 
+        <MainMenu
+          onStartSimulation={() => setInSimulation(true)}
           onStartTrainer={trainerClicked}
-         />
+        />
       </>
     )
   }
@@ -105,7 +105,7 @@ export default function App() {
     ? 'Dealer must draw to 16 and hit soft 17'
     : 'Dealer must draw to 16 and stand on all 17s';
 
-return (
+  return (
     <>
       {inSimulation && (
         <main className="table">
@@ -357,7 +357,9 @@ return (
                                 ? 'You lose'
                                 : state.result === 'push'
                                   ? 'Push — tie'
-                                  : 'You'
+                                  : state.result === 'surrender'
+                                    ? 'You surrendered'
+                                    : 'You'
                         }
                         cards={state.playerHand}
                       />
@@ -381,9 +383,8 @@ return (
                   />
 
                   <div
-                    className={`betting-rect-box betting-rect-box--center ${
-                      state.currentBet > 0 ? 'betting-rect-box--active' : ''
-                    }`}
+                    className={`betting-rect-box betting-rect-box--center ${state.currentBet > 0 ? 'betting-rect-box--active' : ''
+                      }`}
                   >
                     {!state.freePlay && state.currentBet > 0 ? (
                       <div className="box-chip-cluster">
@@ -427,6 +428,8 @@ return (
             canDouble={doubleAvailable}
             canSplit={canSplit(state)}
             onSplit={() => dispatch({ type: 'SPLIT' })}
+            canSurrender={canSurrender(state)}
+            onSurrender={() => dispatch({ type: 'SURRENDER' })}
           />
         </main>
       )}
@@ -511,7 +514,9 @@ return (
                                 ? 'You lose'
                                 : state.result === 'push'
                                   ? 'Push — tie'
-                                  : 'You'
+                                  : state.result === 'surrender'
+                                    ? 'You surrendered'
+                                    : 'You'
                         }
                         cards={state.playerHand}
                       />
@@ -540,6 +545,8 @@ return (
                 canDouble={doubleAvailable}
                 canSplit={canSplit(state)}
                 onSplit={() => dispatch({ type: 'SPLIT' })}
+                canSurrender={canSurrender(state)}
+                onSurrender={() => dispatch({ type: 'SURRENDER' })}
               />
             </section>
 
