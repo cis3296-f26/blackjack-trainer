@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { moduleUrl } from './load-module.mjs';
 
-const { gameReducer, initialState, openingWager, canRebet, returnedChips, settleRoundBet } = await import(await moduleUrl(new URL('../game.ts', import.meta.url)));
+const { gameReducer, initialState, openingWager, canRebet, canDouble, canSplit, returnedChips, settleRoundBet } = await import(await moduleUrl(new URL('../game.ts', import.meta.url)));
 const { shoeStatus, resultReason } = await import(await moduleUrl(new URL('../presentation.ts', import.meta.url)));
 const { createShoe } = await import(await moduleUrl(new URL('../shoe.ts', import.meta.url)));
 const card = rank => ({ rank, suit: '♠' });
@@ -72,7 +72,7 @@ test('a natural blackjack on rebet settles immediately without losing the new su
 
 test('blackjack rounding, loss, and push summaries match settlement', () => {
   assert.equal(returnedChips(25, 'blackjack'), 62);
-  assert.equal(settleRoundBet(475, 25, 'blackjack').nextBalance, 537);
+  assert.equal(settleRoundBet(475, 25, 'blackjack', '3:2').nextBalance, 537);
   const push = gameReducer(deal(['10', '10', '8', '8']), { type: 'STAND' });
   assert.equal(push.lastRound.profit, 0);
   assert.equal(push.lastRound.returned, 25);
@@ -124,4 +124,49 @@ test('result reasons cover busts, dealer blackjack, and tied blackjacks', () => 
   assert.equal(resultReason({ ...initialState, playerHand: deck('10', '9'), dealerHand: deck('10', '8', '5') }), 'The dealer busts with 23.');
   assert.equal(resultReason({ ...initialState, playerHand: deck('10', '9'), dealerHand: deck('A', 'K') }), 'The dealer has blackjack.');
   assert.equal(resultReason({ ...initialState, playerHand: deck('A', '10'), dealerHand: deck('A', 'K') }), 'You and the dealer both have blackjack.');
+});
+
+const withRules = (changes) => gameReducer(initialState, { type: 'SET_HOUSE_RULES', rules: { ...initialState.rules, ...changes } });
+
+test('blackjack pays the table payout in settlement and the round summary', () => {
+  const sixFive = withRules({ blackjackPayout: '6:5' });
+  const state = gameReducer(gameReducer(sixFive, { type: 'PLACE_BET', amount: 25 }), { type: 'DEAL', deck: deck('A', '10', 'K', '8') });
+  assert.equal(state.result, 'blackjack');
+  assert.equal(state.balance, 530);
+  assert.equal(state.lastRound.profit, 30);
+  assert.equal(returnedChips(25, 'blackjack', '1:1'), 50);
+});
+
+test('double is allowed only on totals the table permits', () => {
+  const tenEleven = { ...deal(['5', '10', '6', '8']), rules: { ...initialState.rules, doubleOn: '10-11' } };
+  assert.equal(canDouble(tenEleven), true);
+  const nine = { ...deal(['5', '10', '4', '8']), rules: { ...initialState.rules, doubleOn: '10-11' } };
+  assert.equal(canDouble(nine), false);
+  assert.equal(gameReducer(nine, { type: 'DOUBLE' }), nine);
+});
+
+test('split pairs and ten-value cards once, only when the bet can be matched', () => {
+  assert.equal(canSplit(deal(['8', '10', '8', '7'])), true);
+  assert.equal(canSplit(deal(['K', '10', 'Q', '7'])), true);
+  assert.equal(canSplit(deal(['8', '10', '9', '7'])), false);
+  assert.equal(canSplit(deal(['8', '10', '8', '7'], 300)), false);
+});
+
+test('split hands settle separately, double on the active stake, and rebet the opening bet', () => {
+  const split = gameReducer(deal(['8', '10', '8', '7', '3', '10', '10']), { type: 'SPLIT' });
+  assert.equal(split.balance, 450);
+  assert.deepEqual(split.splitHands.map(hand => hand.cards.map(card => card.rank)), [['8', '3'], ['8', '10']]);
+  assert.equal(canSplit(split), false);
+  assert.equal(canDouble({ ...split, balance: 25 }), true);
+  const doubled = gameReducer(split, { type: 'DOUBLE' });
+  assert.equal(doubled.balance, 425);
+  assert.equal(doubled.activeHandIndex, 1);
+  const done = gameReducer(doubled, { type: 'STAND' });
+  assert.equal(done.phase, 'done');
+  assert.deepEqual(done.splitHands.map(hand => hand.result), ['win', 'win']);
+  assert.equal(done.balance, 575);
+  assert.deepEqual(done.lastRound, { wager: 75, returned: 150, profit: 75, bailout: 0, freePlay: false });
+  assert.equal(resultReason(done), 'Hand 1 wins, Hand 2 wins.');
+  assert.equal(openingWager(done), 25);
+  assert.equal(gameReducer(done, { type: 'REBET_AND_DEAL', deck: deck('10', '6', '7', '10') }).balance, 550);
 });

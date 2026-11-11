@@ -22,8 +22,8 @@ export default function Hint({ state }: { state: GameState }) {
   const doubleAvailable = canDouble(state);
   // Strategy calculation is deferred until the player requests help.
   const analysis = useMemo(() => open && available
-    ? analyzeHand(state.playerHand, state.dealerHand[0], doubleAvailable, state.rules.numDecks)
-    : null, [open, available, state.playerHand, state.dealerHand, doubleAvailable, state.rules.numDecks]);
+    ? analyzeHand(state.playerHand, state.dealerHand[0], state.rules, doubleAvailable)
+    : null, [open, available, state.playerHand, state.dealerHand, doubleAvailable, state.rules]);
 
   return (
     <aside className="practice-panel" aria-label="Practice help">
@@ -64,6 +64,7 @@ export default function Hint({ state }: { state: GameState }) {
           <dt>Hit</dt><dd>Take another card.</dd>
           <dt>Stand</dt><dd>Keep your total and let the dealer play.</dd>
           <dt>Double</dt><dd>Double your bet, take exactly one card, then stand. Available on your first two cards with enough chips. In Free Play, no chips are needed.</dd>
+          <dt>Split</dt><dd>Turn a pair into two hands, each with its own bet. Allowed once per hand; any two ten-value cards count as a pair.</dd>
           <dt>Soft total</dt><dd>A hand with an ace counting as 11.</dd>
           <dt>Push</dt><dd>A tie. Your bet is returned.</dd>
         </dl>

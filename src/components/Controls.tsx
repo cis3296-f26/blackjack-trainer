@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { canDouble, canRebet, openingWager, type GameAction, type GameState } from '../engine/game';
+import { activeBet, canDouble, canRebet, canSplit, openingWager, type GameAction, type GameState } from '../engine/game';
+import { handValue } from '../engine/hand';
+import { doubleAllowedOnTotal } from '../engine/rules';
 import { CASINO_CHIPS } from '../engine/types';
 import ResultBanner from './ResultBanner';
 import './Controls.css';
@@ -24,9 +26,13 @@ export default function Controls({ state, dispatch, onDeal, onRebet }: ControlsP
   const betting = betweenHands && !state.freePlay && (
     state.phase === 'idle' || state.lastRound === editingRound || state.currentBet > 0 || !affordable
   );
+  const handBet = activeBet(state);
   const doubleReason = state.playerHand.length !== 2
     ? 'Double is available only on your first two cards.'
-    : `Double needs another $${state.currentBet}; you have $${state.balance} available.`;
+    : !doubleAllowedOnTotal(handValue(state.playerHand).total, state.rules.doubleOn)
+      ? `This table allows doubling only on ${state.rules.doubleOn === '9-11' ? '9, 10 or 11' : '10 or 11'}.`
+      : `Double needs another $${handBet}; you have $${state.balance} available.`;
+  const splitAvailable = canSplit(state);
 
   // Keep keyboard users at the action area when the button they used disappears.
   useEffect(() => {
@@ -96,9 +102,13 @@ export default function Controls({ state, dispatch, onDeal, onRebet }: ControlsP
             <button type="button" className="button button--action" onClick={() => dispatch({ type: 'STAND' })}>Stand</button>
             <button type="button" className="button button--action" disabled={!canDouble(state)}
               aria-describedby="double-help" onClick={() => dispatch({ type: 'DOUBLE' })}>Double</button>
+            {state.splitHands.length === 0 && (
+              <button type="button" className="button button--action" disabled={!splitAvailable}
+                onClick={() => dispatch({ type: 'SPLIT' })}>Split</button>
+            )}
           </div>
           <p className="action-dock__help" id="double-help">
-            {canDouble(state) ? (state.freePlay ? 'Double takes one final card, then stands.' : `Double adds $${state.currentBet}, takes one final card, then stands.`) : doubleReason}
+            {canDouble(state) ? (state.freePlay ? 'Double takes one final card, then stands.' : `Double adds $${handBet}, takes one final card, then stands.`) : doubleReason}
           </p>
         </>
       )}

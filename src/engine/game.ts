@@ -24,6 +24,8 @@ export interface RoundSummary {
   profit: number;
   bailout: number;
   freePlay: boolean;
+}
+
 export interface SplitHand {
   cards: Card[];
   bet: number;
@@ -82,7 +84,8 @@ export const initialState: GameState = {
   rules: DEFAULT_HOUSE_RULES,
 };
 
-function activeBet(state: GameState): number {
+// The stake on the hand the controls act on (one split hand, or the whole bet)
+export function activeBet(state: GameState): number {
   return state.splitHands[state.activeHandIndex]?.bet ?? state.currentBet;
 }
 
@@ -114,8 +117,8 @@ export function canRebet(state: GameState): boolean {
 }
 
 // Shared by settlement and the UI so displayed winnings use the same rounding.
-export function returnedChips(wager: number, result: Result): number {
-  if (result === 'blackjack') return wager + Math.floor(wager * 1.5);
+export function returnedChips(wager: number, result: Result, payout: BlackjackPayout = '3:2'): number {
+  if (result === 'blackjack') return wager + blackjackProfit(wager, payout);
   if (result === 'win') return wager * 2;
   if (result === 'push') return wager;
   return 0;
@@ -128,7 +131,7 @@ export function canDouble(state: GameState): boolean {
     state.phase === "playerTurn" &&
     state.playerHand.length === 2 &&
     doubleAllowedOnTotal(handValue(state.playerHand).total, state.rules.doubleOn) &&
-    (state.freePlay || state.balance >= state.currentBet)
+    (state.freePlay || state.balance >= activeBet(state))
   );
 }
 
@@ -165,23 +168,31 @@ function finish(state: GameState): GameState {
       // A two-card 21 after a split is a regular 21, not a natural blackjack.
       result: decideResult(hand.cards, state.dealerHand, true),
     }));
-    let returned = 0;
-    let profit = 0;
-    for (const hand of splitHands) {
-      const payout = hand.result === 'win' ? 2 : hand.result === 'push' ? 1 : 0;
-      returned += hand.bet * payout;
-      profit += state.freePlay ? payout - 1 : hand.bet * (payout - 1);
-    }
+    // Free play has no chips, so the overall result counts hands won minus hands lost
+    const score = splitHands.reduce((total, hand) =>
+      total + (hand.result === 'win' ? 1 : hand.result === 'lose' ? -1 : 0), 0);
+    const wager = splitHands.reduce((total, hand) => total + hand.bet, 0);
+    const returned = splitHands.reduce((total, hand) =>
+      total + returnedChips(hand.bet, hand.result!, state.rules.blackjackPayout), 0);
+    const profit = returned - wager;
     const balance = state.freePlay ? state.balance : state.balance + returned;
     const bailoutTriggered = !state.freePlay && balance <= 0;
+    const net = state.freePlay ? score : profit;
+    // Rebet repeats the bet placed before the split, not the combined stake
+    const first = splitHands[0];
+    const openingBet = first.doubled ? first.bet / 2 : first.bet;
     return {
       ...state,
       splitHands,
       phase: 'done',
-      result: profit > 0 ? 'win' : profit < 0 ? 'lose' : 'push',
+      result: net > 0 ? 'win' : net < 0 ? 'lose' : 'push',
       balance: bailoutTriggered ? BANKRUPT_BAILOUT : balance,
       currentBet: 0,
-      lastbet: state.freePlay ? 0 : state.currentBet,
+      doubled: false,
+      lastbet: state.freePlay ? 0 : openingBet,
+      lastRound: state.freePlay
+        ? { wager: 0, returned: 0, profit: 0, bailout: 0, freePlay: true }
+        : { wager, returned, profit, bailout: bailoutTriggered ? BANKRUPT_BAILOUT : 0, freePlay: false },
       bailoutTriggered,
     };
   }
@@ -214,8 +225,8 @@ function finish(state: GameState): GameState {
     lastbet: state.currentBet,
     lastRound: {
       wager: state.currentBet,
-      returned: returnedChips(state.currentBet, result),
-      profit: returnedChips(state.currentBet, result) - state.currentBet,
+      returned: returnedChips(state.currentBet, result, state.rules.blackjackPayout),
+      profit: returnedChips(state.currentBet, result, state.rules.blackjackPayout) - state.currentBet,
       bailout: bailoutTriggered ? BANKRUPT_BAILOUT : 0,
       freePlay: false,
     },
@@ -461,7 +472,7 @@ export function settleRoundBet(
   outcome: "blackjack" | "win" | "push" | "lose",
   blackjackPayout: BlackjackPayout,
 ): { nextBalance: number; bailoutTriggered: boolean } {
-  let nextBalance = balance + returnedChips(currentBet, outcome);
+  let nextBalance = balance + returnedChips(currentBet, outcome, blackjackPayout);
 
   // Automatic Bankruptcy Bailout: If balance hits $0 after losing, grant $100
   let bailoutTriggered = false;

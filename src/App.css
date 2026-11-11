@@ -277,3 +277,34 @@
   .hint-content { grid-column: 1 / -1; grid-row: 2; }
   .hint-comparison table { font-size: 0.8rem; }
 }
+
+/* Split hands sit side by side in the player zone; the active one is highlighted. */
+.split-hands { display: flex; justify-content: center; gap: 0.75rem; width: 100%; }
+.split-hand { flex: 1 1 0; min-width: 0; text-align: center; }
+.split-hand--active .hand__title { color: var(--gold); text-decoration: underline; text-underline-offset: 0.2em; }
+.split-hand__status { margin: 0; color: var(--cream); font-size: 0.8rem; }
+.split-hand--active .split-hand__status { color: var(--gold); font-weight: 700; }
+
+/* The menu and trainer scroll normally instead of using the fixed-height desktop table. */
+.table.table--menu, .table.table--trainer { height: auto; max-height: none; display: block; }
+.table--menu .main-menu { min-height: 70vh; }
+
+.trainer-layout { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 1.5rem; align-items: start; }
+.trainer-layout__game { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+.trainer-layout__guide { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+.trainer-table { display: flex; flex-direction: column; gap: 1rem; min-height: 260px; padding: 1.25rem 1rem; border-radius: 12px; background: #00512d; box-shadow: inset 0 8px 16px #0006, inset 0 -18px 32px #0006; }
+.trainer-table__intro { margin: auto; max-width: 40ch; color: var(--muted); text-align: center; }
+.trainer-guide__card { padding: 1.25rem; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.trainer-guide__heading { margin: 0 0 0.75rem; font-size: 1.2rem; color: var(--gold); }
+.trainer-guide__intro { margin: 0 0 0.75rem; font-size: 0.9rem; line-height: 1.45; }
+.trainer-guide__list { display: flex; flex-direction: column; gap: 0.5rem; margin: 0 0 1rem; padding-left: 1.2rem; font-size: 0.88rem; line-height: 1.45; }
+.trainer-guide__legend { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1rem; }
+.legend-badge { padding: 0.25rem 0.5rem; border-radius: 4px; color: #111; font-size: 0.8rem; font-weight: 700; }
+.legend-badge--h { background: #fff; }
+.legend-badge--s { background: var(--gold); }
+.legend-badge--d { background: #10b981; }
+.legend-badge--ds { background: #38bdf8; }
+.trainer-guide__chart-img { display: block; width: 100%; height: auto; border: 2px solid var(--line); border-radius: 6px; }
+@media (max-width: 1023px) {
+  .trainer-layout { grid-template-columns: minmax(0, 1fr); }
+}

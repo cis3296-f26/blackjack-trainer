@@ -6,8 +6,12 @@ export function shoeStatus(state: GameState) {
   const total = state.rules.numDecks * 52;
   // An empty shoe means a new one will be created at the next deal.
   const remaining = state.deck.length || total;
+  // After a split, playerHand is only the active hand, so count every split hand instead
+  const playerCards = state.splitHands.length > 0
+    ? state.splitHands.reduce((count, hand) => count + hand.cards.length, 0)
+    : state.playerHand.length;
   const inPlay = state.phase === 'playerTurn' || state.phase === 'dealerTurn'
-    ? state.playerHand.length + state.dealerHand.length : 0;
+    ? playerCards + state.dealerHand.length : 0;
   return {
     total,
     remaining,
@@ -18,7 +22,14 @@ export function shoeStatus(state: GameState) {
   };
 }
 
+const splitOutcome = { win: 'wins', lose: 'loses', push: 'pushes', blackjack: 'wins' } as const;
+
 export function resultReason(state: GameState): string {
+  if (state.splitHands.length > 0) {
+    const hands = state.splitHands.map((hand, index) =>
+      `Hand ${index + 1} ${hand.result ? splitOutcome[hand.result] : 'is unsettled'}`);
+    return `${hands.join(', ')}.`;
+  }
   const player = handValue(state.playerHand).total;
   const dealer = handValue(state.dealerHand).total;
   if (isBlackjack(state.playerHand) && isBlackjack(state.dealerHand)) return 'You and the dealer both have blackjack.';

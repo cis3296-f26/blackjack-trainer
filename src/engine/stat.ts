@@ -1,4 +1,5 @@
 import type { Result } from "./game";
+import { blackjackProfit, type BlackjackPayout } from "./rules";
 
 export interface hand_info {
   result: Result;
