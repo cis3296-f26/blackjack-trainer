@@ -2,7 +2,7 @@ import type { Card } from "./types";
 import { createShoe, CUT_CARD_THRESHOLD, draw, shuffle } from "./shoe";
 import { handValue, isBlackjack, isBust } from "./hand";
 import { INITIAL_BALANCE, BANKRUPT_BAILOUT, type ChipValue } from "./types";
-
+import { hand_record, stats_initializer, type Stats } from "./stat";
 // 'dealerTurn' is part of the model, but for now the dealer plays instantly inside STAND,
 // so the state never rests in it. It's there for later (e.g. animating dealer draws).
 export type Phase = "idle" | "playerTurn" | "dealerTurn" | "done";
@@ -20,6 +20,7 @@ export interface GameState {
   bailoutTriggered?: boolean;
   doubled: boolean;
   lastbet: number;
+  stats: Stats;
   freePlay: boolean; // no chips at stake; the bankroll is left untouched until betting resumes
 }
 
@@ -45,6 +46,7 @@ export const initialState: GameState = {
   bailoutTriggered: false,
   doubled: false,
   lastbet: 0,
+  stats: stats_initializer,
   freePlay: false,
 };
 
@@ -107,6 +109,11 @@ function finish(state: GameState): GameState {
     result,
     balance: nextBalance,
     lastbet: state.currentBet,
+    stats: hand_record(state.stats, {
+      result,
+      bet: state.currentBet,
+      doubled: state.doubled,
+    }),
     currentBet: 0,
     bailoutTriggered,
   };
@@ -154,6 +161,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         currentBet: state.currentBet,
         bailoutTriggered: state.bailoutTriggered,
         lastbet: state.lastbet,
+        stats: state.stats,
         doubled: false,
         freePlay: state.freePlay,
       };
