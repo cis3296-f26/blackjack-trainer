@@ -8,6 +8,7 @@ interface ControlsProps {
   currentBet: number;
   bailoutTriggered?: boolean;
   canDouble: boolean;
+  canSplit: boolean;
   freePlay: boolean;
   onToggleFreePlay: (enabled: boolean) => void;
   onPlaceBet: (amount: ChipValue) => void;
@@ -16,6 +17,7 @@ interface ControlsProps {
   onHit: () => void;
   onStand: () => void;
   onDouble: () => void;
+  onSplit: () => void;
 }
 
 // Action buttons. Each one is enabled only in the phase where it makes sense.
@@ -25,6 +27,7 @@ export default function Controls({
   currentBet = 0,
   bailoutTriggered = false,
   canDouble,
+  canSplit,
   freePlay,
   onToggleFreePlay,
   onPlaceBet,
@@ -33,6 +36,7 @@ export default function Controls({
   onHit,
   onStand,
   onDouble,
+  onSplit,
 }: ControlsProps) {
   const isPlayerTurn = phase === "playerTurn";
   const canBet = phase === "idle" || phase === "done";
@@ -126,6 +130,9 @@ export default function Controls({
         </button>
         <button type="button" onClick={onDouble} disabled={!canDouble}>
           Double
+        </button>
+        <button type="button" onClick={onSplit} disabled={!canSplit}>
+          Split
         </button>
       </div>
     </div>

@@ -704,6 +704,32 @@
   top: 65%;
 }
 
+.split-hands {
+  display: flex;
+  gap: 1.5cqw;
+  width: 100%;
+}
+
+.split-hand {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5cqw;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: rgb(0 0 0 / 20%);
+}
+
+.split-hand--active {
+  border-color: #f5c542;
+  background: rgb(0 0 0 / 40%);
+}
+
+.split-hand__status {
+  margin: 0;
+  color: #f8f2db;
+  font-size: clamp(8px, 1.1cqw, 14px);
+}
+
 /* Status moves outside the felt in the App.tsx edit below. */
 .table-center-status {
   position: relative;
