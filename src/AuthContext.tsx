@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { 
+import {
   type User,
-  onAuthStateChanged, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signOut,
   updateProfile,
 } from "firebase/auth";
 import { auth } from "./firebase";
 
-import { AuthContext, type AuthContextType } from './auth';
+import { AuthContext, type AuthContextType } from "./auth";
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -25,7 +25,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // the completed profile instead of briefly mounting with only an email.
     creatingAccount.current = true;
     try {
-      const credential = await createUserWithEmailAndPassword(auth, email, password);
+      const credential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
       if (displayName) await updateProfile(credential.user, { displayName });
       return credential;
     } finally {
@@ -61,7 +65,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   return (
     <AuthContext.Provider value={value}>
-      {loading ? <div className="auth-page" role="status">Opening your table…</div> : children}
+      {loading ? (
+        <div className="auth-page" role="status">
+          Opening your table…
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 }
