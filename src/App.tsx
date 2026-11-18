@@ -90,7 +90,6 @@ export function GameTable({ userName, onLogout }: { userName: string; onLogout: 
   };
 
   useEffect(() => { saveAllowNegativeBalance(state.allowNegativeBalance); }, [state.allowNegativeBalance]);
-  const shoe = shoeStatus(state);
   const playing = state.phase === 'playerTurn' || state.phase === 'dealerTurn';
   const shownBet = state.currentBet;
   const ruleText = describeRules(state.rules);
@@ -123,9 +122,15 @@ export function GameTable({ userName, onLogout }: { userName: string; onLogout: 
               onChange={rules => play({ type: 'SET_HOUSE_RULES', rules })}
             />
             <button type="button" className="button button--secondary" onClick={() => setScreen('menu')}>Main menu</button>
-            <HouseSettings rules={state.rules} canEdit={!playing} onChange={rules => dispatch({ type: 'SET_HOUSE_RULES', rules })}
+            <HouseSettings
+              rules={state.rules}
+              canEdit={!playing && !view}
+              onChange={rules => play({ type: 'SET_HOUSE_RULES', rules })}
               allowNegativeBalance={state.allowNegativeBalance}
-              onAllowNegativeBalanceChange={enabled => dispatch({ type: 'SET_NEGATIVE_BALANCE', enabled })} />
+              onAllowNegativeBalanceChange={enabled =>
+                play({ type: 'SET_NEGATIVE_BALANCE', enabled })
+              }
+            />
           </>
         )}
         <details className="account-menu" onKeyDown={event => {
