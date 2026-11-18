@@ -1,7 +1,7 @@
 .card {
   position: relative;
   flex: 0 0 auto;
-  width: clamp(34px, 6cqw, 72px);
+  width: clamp(60px, 8cqw, 68px);
   aspect-ratio: 5 / 7;
   height: auto;
   overflow: hidden;
@@ -28,7 +28,7 @@
   flex-direction: column;
   align-items: center;
   gap: 1px;
-  font-size: clamp(8px, 1.2cqw, 14px);
+  font-size: clamp(12px, 1.8cqw, 14px);
 }
 
 .card__corner--top {
@@ -52,7 +52,7 @@
 
 .card__pip {
   position: absolute;
-  font-size: clamp(9px, 1.7cqw, 21px);
+  font-size: clamp(15px, 2.5cqw, 21px);
   transform: translate(-50%, -50%);
 }
 
@@ -61,7 +61,7 @@
 }
 
 .card__ace {
-  font-size: clamp(23px, 3.7cqw, 44px);
+  font-size: clamp(32px, 4.5cqw, 44px);
 }
 
 .card__court {
@@ -80,7 +80,7 @@
       rgb(171 135 54 / 12%) 5px 7px
     ),
     #f3e8ca;
-  font-size: clamp(16px, 2.8cqw, 33px);
+  font-size: clamp(24px, 4cqw, 33px);
 }
 
 .card__court span:last-child {
