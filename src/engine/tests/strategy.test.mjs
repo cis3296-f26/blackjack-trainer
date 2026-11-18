@@ -47,3 +47,57 @@ test('double includes bust risk and preserves probabilities for soft hands', () 
     near(soft.double.win + soft.double.push + soft.double.lose, 1);
     near(soft.double.ev, 2 * (soft.double.win - soft.double.lose));
 });
+
+test('split aces and eights against 6 beat the other actions', () => {
+    for (const rank of ['A', '8']) {
+        const analysis = analyzeHand([card(rank), card(rank)], card('6'));
+        assert.equal(analysis.recommended, 'split');
+        near(analysis.split.win + analysis.split.push + analysis.split.lose, 1);
+        near(analysis.split.ev, 2 * (analysis.split.win - analysis.split.lose));
+        assert.ok(analysis.split.ev > Math.max(analysis.hit.ev, analysis.stand.ev, analysis.double.ev));
+    }
+});
+
+test('pairs still choose double or stand when those earn more than splitting', () => {
+    assert.equal(analyzeHand([card('5'), card('5')], card('6')).recommended, 'double');
+    assert.equal(analyzeHand([card('10'), card('K')], card('6')).recommended, 'stand');
+});
+
+test('late surrender on hard 16 against 10 loses exactly half the original bet', () => {
+    const analysis = analyzeHand([card('10'), card('6')], card('10'), 6);
+    assert.equal(analysis.recommended, 'surrender');
+    assert.deepEqual(analysis.surrender, { ev: -0.5, win: 0, push: 0, lose: 1 });
+    assert.ok(analysis.hit.ev < -0.5);
+    assert.ok(analysis.stand.ev < -0.5);
+});
+
+test('surrender is not recommended for a strong hand', () => {
+    const analysis = analyzeHand([card('10'), card('9')], card('6'));
+    assert.equal(analysis.recommended, 'stand');
+    assert.ok(analysis.stand.ev > analysis.surrender.ev);
+});
+
+test('split requires two cards of equal value, including mixed ten-valued ranks', () => {
+    assert.equal(analyzeHand([card('8'), card('7')], card('6')).split, null);
+    assert.ok(analyzeHand([card('J'), card('Q')], card('6')).split);
+    const afterHit = analyzeHand([card('2'), card('2'), card('2')], card('6'));
+    assert.equal(afterHit.split, null);
+    assert.equal(afterHit.surrender, null);
+    assert.ok(['hit', 'stand'].includes(afterHit.recommended));
+});
+
+test('disabled split and surrender fall back to the best available action', () => {
+    const pair = analyzeHand([card('8'), card('8')], card('6'), 1, true, false);
+    assert.equal(pair.split, null);
+    assert.equal(pair.recommended, 'stand');
+    const hard16 = analyzeHand([card('10'), card('6')], card('10'), 6, true, true, false);
+    assert.equal(hard16.surrender, null);
+    assert.equal(hard16.recommended, 'hit');
+});
+
+test('split availability is independent of double availability', () => {
+    const analysis = analyzeHand([card('8'), card('8')], card('6'), 1, false, true, false);
+    assert.equal(analysis.double, null);
+    assert.equal(analysis.surrender, null);
+    assert.equal(analysis.recommended, 'split');
+});
