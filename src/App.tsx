@@ -120,12 +120,6 @@ export function GameTable({ userName, onLogout }: { userName: string; onLogout: 
               rules={state.rules}
               canEdit={!playing && !view}
               onChange={rules => play({ type: 'SET_HOUSE_RULES', rules })}
-            />
-            <button type="button" className="button button--secondary" onClick={() => setScreen('menu')}>Main menu</button>
-            <HouseSettings
-              rules={state.rules}
-              canEdit={!playing && !view}
-              onChange={rules => play({ type: 'SET_HOUSE_RULES', rules })}
               allowNegativeBalance={state.allowNegativeBalance}
               onAllowNegativeBalanceChange={enabled =>
                 play({ type: 'SET_NEGATIVE_BALANCE', enabled })
