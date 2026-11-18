@@ -91,7 +91,6 @@ export function GameTable({ userName, onLogout }: { userName: string; onLogout: 
   };
 
   useEffect(() => { saveAllowNegativeBalance(state.allowNegativeBalance); }, [state.allowNegativeBalance]);
-  // const shoe = shoeStatus(state);
   const playing = state.phase === 'playerTurn' || state.phase === 'dealerTurn';
   const shownBet = state.currentBet;
   const ruleText = describeRules(state.rules);
