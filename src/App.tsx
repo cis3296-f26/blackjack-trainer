@@ -33,7 +33,7 @@ export default function App() {
   const analysis = useMemo(
   () =>
     state.phase === 'playerTurn'
-      ? analyzeHand(state.playerHand, state.dealerHand[0], state.rules.numDecks, doubleAvailable)
+      ? analyzeHand(state.playerHand, state.dealerHand[0], state.rules.numDecks, doubleAvailable, doubleAvailable)
       : null,
   [state.phase, state.playerHand, state.dealerHand, state.rules.numDecks, doubleAvailable],
 );

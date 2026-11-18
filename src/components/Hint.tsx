@@ -52,14 +52,30 @@ export default function Hint({ analysis }: HintProps) {
           {analysis ? (
             <>
               <p className="hint__text">
-                Recommended: <strong>{{ hit: 'Hit', stand: 'Stand', double: 'Double' }[analysis.recommended]}</strong>
+                Recommended: <strong>{{ hit: 'Hit', stand: 'Stand', double: 'Double', split: 'Split', surrender: 'Surrender' }[analysis.recommended]}</strong>
               </p>
               <Row label="Hit" o={analysis.hit} best={analysis.recommended === 'hit'} />
               <Row label="Stand" o={analysis.stand} best={analysis.recommended === 'stand'} />
               {analysis.double && (
                 <Row label="Double" o={analysis.double} best={analysis.recommended === 'double'} />
               )}
+              {analysis.split && (
+                <Row label="Split (estimate)" o={analysis.split} best={analysis.recommended === 'split'} />
+              )}
+              {analysis.surrender && (
+                <Row label="Surrender" o={analysis.surrender} best={analysis.recommended === 'surrender'} />
+              )}
               <p className="hint__text">EV is profit per original unit bet.</p>
+              {analysis.split && (
+                <p className="hint__text">
+                  Split EV covers both hands; percentages are per hand. Assumes one split,
+                  no double after split, and one card on split aces. Cards drawn by the other hand are not modeled.
+                </p>
+              )}
+              {analysis.surrender && (
+                <p className="hint__text">Late surrender loses half your bet.</p>
+              )}
+              <p className="hint__text">Split and surrender are strategy hints only; play controls are not yet available.</p>
             </>
           ) : (
             <p className="hint__text">Hints are available during your turn.</p>

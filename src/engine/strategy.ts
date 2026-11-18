@@ -11,8 +11,7 @@ const RANK_VALUE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10];
 // so there are no slots for lower totals.
 const BUST = 5; // dealer outcome slots: 0..4 = 17..21, 5 = bust
 
-//Accepted actions so far
-export type Action = 'hit' | 'stand' | 'double';
+export type Action = 'hit' | 'stand' | 'double' | 'split' | 'surrender';
 
 export interface Outcome {
     ev: number; // expected profit per 1 unit bet: win = +1, lose = -1, push = 0
@@ -26,6 +25,8 @@ export interface Analysis {
     stand: Outcome;
     hit: Outcome; // assumes you play optimally after the first hit
     double: Outcome | null; // one card then stand; EV is per original unit bet
+    split: Outcome | null; // EV for both bets; probabilities are per split hand
+    surrender: Outcome | null; // late surrender: guaranteed loss of half the bet
     recommended: Action;
     dealerOutcomes: number[]; // P(dealer ends on 17,18,19,20,21,bust)
 }
@@ -165,7 +166,14 @@ function playerStep(hand: Total, counts: number[], ctx: Ctx): Step {
 
 // public API
 
-export function analyzeHand(playerHand: Card[], dealerUpcard: Card, numDecks = 1, canDouble = true): Analysis {
+export function analyzeHand(
+    playerHand: Card[],
+    dealerUpcard: Card,
+    numDecks = 1,
+    canDouble = true,
+    canSplit = true,
+    canSurrender = true,
+): Analysis {
     const counts = Array<number>(13).fill(4 * numDecks);
     for (const c of [...playerHand, dealerUpcard]) counts[RANKS.indexOf(c.rank)]--;
 
@@ -198,10 +206,52 @@ export function analyzeHand(playerHand: Card[], dealerUpcard: Card, numDecks = 1
     }
     let recommended: Action = step.hit.ev > step.stand.ev ? 'hit' : 'stand';
     if (double && double.ev > step.best.ev) recommended = 'double';
+    let bestEv = double && recommended === 'double' ? double.ev : step.best.ev;
+
+    // One split into two hands, no resplitting or doubling after a split.
+    // Ten-valued cards can be split even if their printed ranks differ.
+    // Evaluate each hand against the visible cards independently. This estimates
+    // split EV without modeling cards consumed while playing the other hand.
+    let split: Outcome | null = null;
+    if (canSplit && playerHand.length === 2 &&
+        RANK_VALUE[RANKS.indexOf(playerHand[0].rank)] === RANK_VALUE[RANKS.indexOf(playerHand[1].rank)]) {
+        split = { ev: 0, win: 0, push: 0, lose: 0 };
+        const start = fromCards([playerHand[0]]);
+        const splitAces = playerHand[0].rank === 'A';
+        const n = sum(counts);
+        for (let r = 0; r < RANKS.length; r++) {
+            if (counts[r] === 0) continue;
+            const p = counts[r] / n;
+            counts[r]--;
+            const next = addRank(start, r);
+            // Split aces receive exactly one card. A split 21 pays 1:1.
+            const outcome = splitAces
+                ? standOutcome(bestTotal(next), dealerDistribution(counts, ctx))
+                : playerStep(next, counts, ctx).best;
+            counts[r]++;
+            split.win += p * outcome.win;
+            split.push += p * outcome.push;
+            split.lose += p * outcome.lose;
+        }
+        split.ev = 2 * (split.win - split.lose);
+        if (split.ev > bestEv) {
+            recommended = 'split';
+            bestEv = split.ev;
+        }
+    }
+
+    // The dealer has already checked for blackjack. Surrender is only offered
+    // before the first hit, and its half-bet loss must be compared using EV.
+    const surrender: Outcome | null = canSurrender && playerHand.length === 2
+        ? { ev: -0.5, win: 0, push: 0, lose: 1 }
+        : null;
+    if (surrender && surrender.ev > bestEv) recommended = 'surrender';
     return {
         stand: step.stand,
         hit: step.hit,
         double,
+        split,
+        surrender,
         recommended,
         dealerOutcomes: dealerDistribution(counts, ctx),
     };
