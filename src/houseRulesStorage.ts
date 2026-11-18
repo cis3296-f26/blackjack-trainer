@@ -21,3 +21,22 @@ export function saveHouseRules(rules: HouseRules): void {
     // Storage full or blocked; the settings still apply for this session
   }
 }
+
+// The bankroll setting is saved separately: it's a player preference, not a house rule
+const NEGATIVE_BALANCE_KEY = 'bjt.allowNegativeBalance';
+
+export function loadAllowNegativeBalance(): boolean {
+  try {
+    return localStorage.getItem(NEGATIVE_BALANCE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function saveAllowNegativeBalance(enabled: boolean): void {
+  try {
+    localStorage.setItem(NEGATIVE_BALANCE_KEY, String(enabled));
+  } catch {
+    // Storage full or blocked; the setting still applies for this session
+  }
+}

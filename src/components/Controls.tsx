@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { activeBet, canDouble, canRebet, canSplit, canSurrender, openingWager, type GameAction, type GameState } from '../engine/game';
 import { handValue } from '../engine/hand';
+import { formatMoney } from '../engine/presentation';
 import { doubleAllowedOnTotal } from '../engine/rules';
 import { CASINO_CHIPS } from '../engine/types';
 import ResultBanner from './ResultBanner';
@@ -22,7 +23,9 @@ export default function Controls({ state, dispatch, onDeal, onRebet }: ControlsP
   const betweenHands = state.phase === 'idle' || state.phase === 'done';
   const repeatAmount = openingWager(state);
   const affordable = canRebet(state);
-  const previousBetTooLarge = state.phase === 'done' && repeatAmount > state.balance && state.currentBet === 0;
+  const previousBetTooLarge = !state.allowNegativeBalance && state.phase === 'done' &&
+    repeatAmount > state.balance && state.currentBet === 0;
+  const maxOffReason = 'Max bet needs a balance above $0';
   const betting = betweenHands && !state.freePlay && (
     state.phase === 'idle' || state.lastRound === editingRound || state.currentBet > 0 || !affordable
   );
@@ -31,7 +34,7 @@ export default function Controls({ state, dispatch, onDeal, onRebet }: ControlsP
     ? 'Double is available only on your first two cards.'
     : !doubleAllowedOnTotal(handValue(state.playerHand).total, state.rules.doubleOn)
       ? `This table allows doubling only on ${state.rules.doubleOn === '9-11' ? '9, 10 or 11' : '10 or 11'}.`
-      : `Double needs another $${handBet}; you have $${state.balance} available.`;
+      : `Double needs another $${handBet}; you have ${formatMoney(state.balance)} available.`;
   const splitAvailable = canSplit(state);
   const surrenderAvailable = canSurrender(state);
 
@@ -64,7 +67,7 @@ export default function Controls({ state, dispatch, onDeal, onRebet }: ControlsP
         {state.phase !== 'done' && <h2>{playing ? 'Your turn' : state.freePlay ? 'Ready to practice?' : 'Choose chips, then deal'}</h2>}
         {!state.freePlay && (
           <div className="bankroll-hud" aria-live="polite" aria-atomic="true">
-            <span>Available <strong>${state.balance}</strong></span>
+            <span>Available <strong>{formatMoney(state.balance)}</strong></span>
             {(betting || playing) && <span>{playing ? 'Bet' : 'Your bet'} <strong>${state.currentBet}</strong></span>}
           </div>
         )}
@@ -76,11 +79,19 @@ export default function Controls({ state, dispatch, onDeal, onRebet }: ControlsP
             {CASINO_CHIPS.map(chip => (
               <button key={chip.value} type="button" className="casino-chip"
                 style={{ '--chip-color': chip.color } as React.CSSProperties}
-                disabled={state.balance < chip.value} aria-label={`Add ${chip.label} to bet`}
+                disabled={!state.allowNegativeBalance && state.balance < chip.value} aria-label={`Add ${chip.label} to bet`}
                 onClick={() => dispatch({ type: 'PLACE_BET', amount: chip.value })}>
                 <span className="chip-inner">{chip.label}</span>
               </button>
             ))}
+            <button type="button" className="casino-chip casino-chip--max"
+              style={{ '--chip-color': '#eab308' } as React.CSSProperties}
+              disabled={state.balance <= 0}
+              title={state.balance <= 0 ? maxOffReason : undefined}
+              aria-label={state.balance <= 0 ? maxOffReason : `Bet all ${formatMoney(state.balance)}`}
+              onClick={() => dispatch({ type: 'ALL_IN' })}>
+              <span className="chip-inner">MAX</span>
+            </button>
           </div>
           <p className="action-dock__help" id="bet-help">
             {previousBetTooLarge
