@@ -13,6 +13,7 @@ import AuthPage from './components/AuthPage';
 import MainMenu from './components/MainMenu';
 import './App.css';
 import { onFelt, useDealerAnimation } from './dealer/useDealerAnimation';
+import TrainerView from './components/TrainerView';
 
 type Screen = 'menu' | 'simulation' | 'trainer';
 
@@ -90,7 +91,7 @@ export function GameTable({ userName, onLogout }: { userName: string; onLogout: 
   };
 
   useEffect(() => { saveAllowNegativeBalance(state.allowNegativeBalance); }, [state.allowNegativeBalance]);
-  const shoe = shoeStatus(state);
+  // const shoe = shoeStatus(state);
   const playing = state.phase === 'playerTurn' || state.phase === 'dealerTurn';
   const shownBet = state.currentBet;
   const ruleText = describeRules(state.rules);
@@ -121,11 +122,11 @@ export function GameTable({ userName, onLogout }: { userName: string; onLogout: 
               rules={state.rules}
               canEdit={!playing && !view}
               onChange={rules => play({ type: 'SET_HOUSE_RULES', rules })}
-            />
-            <button type="button" className="button button--secondary" onClick={() => setScreen('menu')}>Main menu</button>
-            <HouseSettings rules={state.rules} canEdit={!playing} onChange={rules => dispatch({ type: 'SET_HOUSE_RULES', rules })}
               allowNegativeBalance={state.allowNegativeBalance}
-              onAllowNegativeBalanceChange={enabled => dispatch({ type: 'SET_NEGATIVE_BALANCE', enabled })} />
+              onAllowNegativeBalanceChange={enabled =>
+                play({ type: 'SET_NEGATIVE_BALANCE', enabled })
+              }
+            />
           </>
         )}
         <details className="account-menu" onKeyDown={event => {
@@ -179,72 +180,27 @@ export function GameTable({ userName, onLogout }: { userName: string; onLogout: 
 
   if (screen === 'trainer') {
     return (
-      <main className="table table--trainer">
-        {header}
-        {rulesSummary}
-        <div className="trainer-layout">
-          <section className="trainer-layout__game" aria-label="Practice table">
-            <div className="trainer-table">
-              {state.phase === 'idle' ? (
-                <p className="trainer-table__intro">
-                  Deal a hand to practice basic strategy. Use the chart to find the best play, then check yourself with a hint.
-                </p>
-              ) : (
-                <>
-                  <Hand title="Dealer" cards={state.dealerHand} hideHoleCard={state.phase === 'playerTurn'} />
-                  <PlayerHands state={state} />
-                </>
-              )}
-            </div>
-            {controls}
-          </section>
-
-          <aside className="trainer-layout__guide" aria-label="Basic strategy guide">
-            <Hint key={state.phase} state={state} />
-            <div className="trainer-guide__card">
-              <h2 className="trainer-guide__heading">How Basic Strategy Works</h2>
-              <p className="trainer-guide__intro">
-                Basic Strategy is the mathematically optimal way to play every hand in Blackjack based on
-                millions of simulated hands. To use the chart, find the <strong>Dealer&apos;s Upcard</strong>{' '}
-                along the top row and match it with your hand type on the vertical axis:
-              </p>
-              <ul className="trainer-guide__list">
-                <li>
-                  <strong>Hard Totals (8–17):</strong> Any hand without an Ace, or where the Ace must count as 1
-                  to avoid busting. Stand on 12–16 when the dealer shows a weak upcard (2–6, except hit 12 vs 2 or
-                  3), and hit when the dealer shows 7 through Ace. Always double on 11!
-                </li>
-                <li>
-                  <strong>Soft Totals (A,2–A,9):</strong> Hands with an Ace counted as 11 (e.g., A,6 is Soft 17).
-                  Because you cannot bust on a single hit, play these aggressively—double against weak dealer cards
-                  (4–6) or hit to improve low soft totals.
-                </li>
-                <li>
-                  <strong>Pair Splitting (2,2–A,A):</strong> When dealt two cards of the same value. Always split
-                  Aces (A,A) and 8s (8,8), and never split 10-value cards (T,T) or 5s (5,5).
-                </li>
-                <li>
-                  <strong>Surrender &amp; Insurance:</strong> Only surrender Hard 16 vs. 9, 10, or Ace, and Hard
-                  15 vs. 10 (if allowed). Never take Insurance or Even Money.
-                </li>
-              </ul>
-              <div className="trainer-guide__legend">
-                <span className="legend-badge legend-badge--h">H = Hit</span>
-                <span className="legend-badge legend-badge--s">S = Stand</span>
-                <span className="legend-badge legend-badge--d">D = Double (or Hit)</span>
-                <span className="legend-badge legend-badge--ds">Ds = Double (or Stand)</span>
-              </div>
-              <div className="trainer-guide__chart-wrapper">
-                <img
-                  src="/basic-strategy-chart.png"
-                  alt="Blackjack Basic Strategy Chart showing Hard Totals, Soft Totals, Pair Splitting, and Surrender rules"
-                  className="trainer-guide__chart-img"
-                />
-              </div>
-            </div>
-          </aside>
-        </div>
-      </main>
+      <TrainerView
+        state={state}
+        header={header}
+        rulesSummary={rulesSummary}
+        playerHands={<PlayerHands state={state} />}
+        renderControls={(wrapDispatch) => {
+          const trainerPlay = wrapDispatch(play);
+          return view ? (
+            <p className="dealer-status" role="status">
+              Dealer is handling the cards…
+            </p>
+          ) : (
+            <Controls
+              state={state}
+              dispatch={trainerPlay}
+              onDeal={() => trainerPlay(createDealAction(state.rules))}
+              onRebet={() => trainerPlay(createDealAction(state.rules, 'REBET_AND_DEAL'))}
+            />
+          );
+        }}
+      />
     );
   }
 
