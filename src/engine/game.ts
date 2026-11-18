@@ -119,6 +119,13 @@ export function canSurrender(state: GameState): boolean {
   );
 }
 
+export function usesFreshShoe(state: GameState, suppliedDeck: Card[]): boolean {
+  return (
+    state.deck.length < reshuffleThreshold(state.rules) ||
+    suppliedDeck.length < MIN_CARDS_BEFORE_RESHUFFLE
+  );
+}
+
 // Supplies a freshly shuffled shoe for the current house rules; DEAL only uses it once the current shoe hits the cut card
 export function createDealAction(
   rules: HouseRules = DEFAULT_HOUSE_RULES,
@@ -319,10 +326,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         return state;
 
       // Deal in casino order: player, dealer, player, dealer
-      const isStackedTestDeck = action.deck.length < MIN_CARDS_BEFORE_RESHUFFLE;
-      const needsReshuffle =
-        state.deck.length < reshuffleThreshold(state.rules) || isStackedTestDeck;
-      let deck = needsReshuffle ? action.deck : state.deck;
+      let deck = usesFreshShoe(state, action.deck) ? action.deck : state.deck;
       const dealt: Card[] = [];
       for (let i = 0; i < 4; i++) {
         const { card, rest } = draw(deck);

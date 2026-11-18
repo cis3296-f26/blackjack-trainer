@@ -1,16 +1,18 @@
-import { useEffect, useReducer, useState } from 'react';
-import { createDealAction, gameReducer, initialState, type GameState } from './engine/game';
+import { useEffect, useState } from 'react';
+import { createDealAction, initialState, type GameState } from './engine/game';
 import { shoeStatus } from './engine/presentation';
 import { reshuffleThreshold, type HouseRules } from './engine/rules';
 import { useAuth } from './auth';
 import { loadAllowNegativeBalance, loadHouseRules, saveAllowNegativeBalance, saveHouseRules } from './houseRulesStorage';
 import Controls from './components/Controls';
 import Hand from './components/Hand';
+import Card from './components/Card';
 import Hint from './components/Hint';
 import HouseSettings from './components/HouseSettings';
 import AuthPage from './components/AuthPage';
 import MainMenu from './components/MainMenu';
 import './App.css';
+import { onFelt, useDealerAnimation } from './dealer/useDealerAnimation';
 
 type Screen = 'menu' | 'simulation' | 'trainer';
 
@@ -57,7 +59,7 @@ function PlayerHands({ state }: { state: GameState }) {
 }
 
 export function GameTable({ userName, onLogout }: { userName: string; onLogout: () => Promise<void> }) {
-  const [state, dispatch] = useReducer(gameReducer, undefined, () => ({
+    const [state, setGameState] = useState<GameState>(() => ({
     ...initialState,
     rules: loadHouseRules(),
     allowNegativeBalance: loadAllowNegativeBalance(),
@@ -66,6 +68,27 @@ export function GameTable({ userName, onLogout }: { userName: string; onLogout: 
   const [logoutError, setLogoutError] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
   useEffect(() => { saveHouseRules(state.rules); }, [state.rules]);
+    const baseShoe = shoeStatus(state);
+  const { feltRef, view, play } = useDealerAnimation(
+    state,
+    setGameState,
+    baseShoe.remaining,
+  );
+
+  const table = view?.table ?? state;
+  const holeDown = view?.holeDown ?? (state.phase === 'playerTurn');
+  const remaining = view?.remaining ?? baseShoe.remaining;
+
+  const shoe = {
+    ...baseShoe,
+    remaining,
+    remainingPercent: (remaining / baseShoe.total) * 100,
+    discarded:
+      view?.discarded ??
+      Math.max(0, baseShoe.total - remaining - onFelt(state)),
+    reshuffleNext: remaining < reshuffleThreshold(state.rules),
+  };
+
   useEffect(() => { saveAllowNegativeBalance(state.allowNegativeBalance); }, [state.allowNegativeBalance]);
   const shoe = shoeStatus(state);
   const playing = state.phase === 'playerTurn' || state.phase === 'dealerTurn';
@@ -85,6 +108,20 @@ export function GameTable({ userName, onLogout }: { userName: string; onLogout: 
       <nav className="app-header__actions" aria-label="Table and account">
         {screen !== 'menu' && (
           <>
+            <button
+              type="button"
+              className="button button--secondary"
+              disabled={!!view}
+              onClick={() => setScreen('menu')}
+            >
+              Main menu
+            </button>
+
+            <HouseSettings
+              rules={state.rules}
+              canEdit={!playing && !view}
+              onChange={rules => play({ type: 'SET_HOUSE_RULES', rules })}
+            />
             <button type="button" className="button button--secondary" onClick={() => setScreen('menu')}>Main menu</button>
             <HouseSettings rules={state.rules} canEdit={!playing} onChange={rules => dispatch({ type: 'SET_HOUSE_RULES', rules })}
               allowNegativeBalance={state.allowNegativeBalance}
@@ -118,10 +155,17 @@ export function GameTable({ userName, onLogout }: { userName: string; onLogout: 
     </div>
   );
 
-  const controls = (
-    <Controls state={state} dispatch={dispatch}
-      onDeal={() => dispatch(createDealAction(state.rules))}
-      onRebet={() => dispatch(createDealAction(state.rules, 'REBET_AND_DEAL'))} />
+    const controls = view ? (
+    <p className="dealer-status" role="status">
+      Dealer is handling the cards…
+    </p>
+  ) : (
+    <Controls
+      state={state}
+      dispatch={play}
+      onDeal={() => play(createDealAction(state.rules))}
+      onRebet={() => play(createDealAction(state.rules, 'REBET_AND_DEAL'))}
+    />
   );
 
   if (screen === 'menu') {
@@ -211,7 +255,20 @@ export function GameTable({ userName, onLogout }: { userName: string; onLogout: 
       <div className="game-layout">
         <section className="casino-scene" aria-label="Blackjack table">
           <div className="casino-table-wood">
-            <div className="casino-table-felt">
+                        <div
+              className="casino-table-felt"
+              ref={feltRef}
+              data-dealing={view ? true : undefined}
+            >
+              {view?.flight && (
+                <div className="dealer-flight-source" hidden aria-hidden="true">
+                  <Card
+                    card={view.flight.card}
+                    faceDown={view.flight.faceDown}
+                  />
+                </div>
+              )}
+
               <div className="casino-top-equipment" aria-hidden="true">
                 <div className="discard-holder">
                   <div className="discard-acrylic-box"><div className="discard-card-stack" style={{ height: `${shoe.discarded / shoe.total * 100}%` }} /></div>
@@ -227,9 +284,21 @@ export function GameTable({ userName, onLogout }: { userName: string; onLogout: 
                   </div></div></div>
                 </div>
               </div>
-              <div className="dealer-zone">
-                {state.phase !== 'idle' ? <Hand title="Dealer" cards={state.dealerHand} hideHoleCard={state.phase === 'playerTurn'} /> : (
-                  <div className="empty-hand"><span>Dealer</span><div className="empty-hand__cards" aria-hidden="true"><i /><i /></div></div>
+                            <div className="dealer-zone">
+                {table.dealerHand.length > 0 ? (
+                  <Hand
+                    title="Dealer"
+                    cards={table.dealerHand}
+                    hideHoleCard={holeDown}
+                  />
+                ) : (
+                  <div className="empty-hand">
+                    <span>Dealer</span>
+                    <div className="empty-hand__cards" aria-hidden="true">
+                      <i />
+                      <i />
+                    </div>
+                  </div>
                 )}
               </div>
               <div className="felt-lettering" aria-hidden="true">
@@ -238,9 +307,18 @@ export function GameTable({ userName, onLogout }: { userName: string; onLogout: 
                 </svg>
               </div>
               <div className="player-zone">
-                {state.phase !== 'idle' ? <PlayerHands state={state} /> : (
-                  <div className="table-welcome"><h2>Your seat is ready.</h2><p>{state.freePlay ? 'Deal a hand to start practicing.' : 'Choose your chips, then deal.'}</p></div>
-                )}
+                {table.playerHand.length > 0 ? (
+                  <PlayerHands state={table} />
+                ) : table.phase === 'idle' ? (
+                  <div className="table-welcome">
+                    <h2>Your seat is ready.</h2>
+                    <p>
+                      {table.freePlay
+                        ? 'Deal a hand to start practicing.'
+                        : 'Choose your chips, then deal.'}
+                    </p>
+                  </div>
+                ) : null}
               </div>
               <div className="table-bet" aria-hidden="true">
                 {state.freePlay ? <span>FREE PLAY</span> : shownBet > 0 ? <div className="table-bet__chip">${shownBet}</div> : <span>{state.phase === 'done' ? 'HAND COMPLETE' : 'YOUR BET'}</span>}
@@ -253,7 +331,7 @@ export function GameTable({ userName, onLogout }: { userName: string; onLogout: 
             <span>{shoe.reshuffleNext ? 'Reshuffles next hand' : `Reshuffles below ${reshuffleThreshold(state.rules)} cards`}</span>
           </div>
         </section>
-        <Hint key={state.phase} state={state} />
+        {!view && <Hint key={state.phase} state={state} />}
         {controls}
       </div>
     </main>
