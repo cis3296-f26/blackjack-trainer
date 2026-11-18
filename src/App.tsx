@@ -3,7 +3,7 @@ import { createDealAction, gameReducer, initialState, type GameState } from './e
 import { shoeStatus } from './engine/presentation';
 import { reshuffleThreshold, type HouseRules } from './engine/rules';
 import { useAuth } from './auth';
-import { loadHouseRules, saveHouseRules } from './houseRulesStorage';
+import { loadAllowNegativeBalance, loadHouseRules, saveAllowNegativeBalance, saveHouseRules } from './houseRulesStorage';
 import Controls from './components/Controls';
 import Hand from './components/Hand';
 import Hint from './components/Hint';
@@ -57,11 +57,16 @@ function PlayerHands({ state }: { state: GameState }) {
 }
 
 export function GameTable({ userName, onLogout }: { userName: string; onLogout: () => Promise<void> }) {
-  const [state, dispatch] = useReducer(gameReducer, undefined, () => ({ ...initialState, rules: loadHouseRules() }));
+  const [state, dispatch] = useReducer(gameReducer, undefined, () => ({
+    ...initialState,
+    rules: loadHouseRules(),
+    allowNegativeBalance: loadAllowNegativeBalance(),
+  }));
   const [screen, setScreen] = useState<Screen>('menu');
   const [logoutError, setLogoutError] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
   useEffect(() => { saveHouseRules(state.rules); }, [state.rules]);
+  useEffect(() => { saveAllowNegativeBalance(state.allowNegativeBalance); }, [state.allowNegativeBalance]);
   const shoe = shoeStatus(state);
   const playing = state.phase === 'playerTurn' || state.phase === 'dealerTurn';
   const shownBet = state.currentBet;
@@ -81,7 +86,9 @@ export function GameTable({ userName, onLogout }: { userName: string; onLogout: 
         {screen !== 'menu' && (
           <>
             <button type="button" className="button button--secondary" onClick={() => setScreen('menu')}>Main menu</button>
-            <HouseSettings rules={state.rules} canEdit={!playing} onChange={rules => dispatch({ type: 'SET_HOUSE_RULES', rules })} />
+            <HouseSettings rules={state.rules} canEdit={!playing} onChange={rules => dispatch({ type: 'SET_HOUSE_RULES', rules })}
+              allowNegativeBalance={state.allowNegativeBalance}
+              onAllowNegativeBalanceChange={enabled => dispatch({ type: 'SET_NEGATIVE_BALANCE', enabled })} />
           </>
         )}
         <details className="account-menu" onKeyDown={event => {

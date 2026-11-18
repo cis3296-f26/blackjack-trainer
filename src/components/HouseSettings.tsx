@@ -14,12 +14,15 @@ import {
   type DoubleOn,
   type HouseRules,
 } from '../engine/rules';
+import { BANKRUPT_BAILOUT } from '../engine/types';
 import './HouseSettings.css';
 
 interface HouseSettingsProps {
   rules: HouseRules;
   canEdit: boolean; // only between hands
   onChange: (rules: HouseRules) => void;
+  allowNegativeBalance: boolean;
+  onAllowNegativeBalanceChange: (enabled: boolean) => void;
 }
 
 // The slider works in whole percents so the stored fraction never picks up float noise
@@ -73,7 +76,13 @@ function ChoiceGroup<T extends string | number | boolean>({
 }
 
 // Table-rules button plus a native modal for casino-specific settings.
-export default function HouseSettings({ rules, canEdit, onChange }: HouseSettingsProps) {
+export default function HouseSettings({
+  rules,
+  canEdit,
+  onChange,
+  allowNegativeBalance,
+  onAllowNegativeBalanceChange,
+}: HouseSettingsProps) {
   const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -236,6 +245,23 @@ export default function HouseSettings({ rules, canEdit, onChange }: HouseSetting
                 <li key={rule}>{rule}</li>
               ))}
             </ul>
+          </section>
+
+          <section className="house-settings__section">
+            <h3>Bankroll</h3>
+            <ChoiceGroup
+              label="When you run out of chips"
+              choices={[
+                { value: false, label: `Refill $${BANKRUPT_BAILOUT}` },
+                { value: true, label: 'Go negative' },
+              ]}
+              value={allowNegativeBalance}
+              disabled={!canEdit}
+              onSelect={onAllowNegativeBalanceChange}
+            />
+            <p className="house-settings__help">
+              Go negative lets you keep betting below $0. Max bet works only while your balance is above $0.
+            </p>
           </section>
 
           <p className="house-settings__help">Changes save automatically on this device.</p>
