@@ -289,22 +289,6 @@ export function GameTable({ userName, onLogout }: { userName: string; onLogout: 
         {!view && <Hint key={state.phase} state={state} />}
         {controls}
       </div>
-
-      <Controls
-        phase={state.phase}
-        balance={state.balance}
-        currentBet={state.currentBet}
-        bailoutTriggered={state.bailoutTriggered}
-        freePlay={state.freePlay}
-        onToggleFreePlay={(enabled) => dispatch({ type: "SET_FREE_PLAY", enabled })}
-        onPlaceBet={(amount) => dispatch({ type: "PLACE_BET", amount })}
-        onClearBet={() => dispatch({ type: "CLEAR_BET" })}
-        onDeal={() => dispatch(createDealAction(state.rules))}
-        onHit={() => dispatch({ type: "HIT" })}
-        onStand={() => dispatch({ type: "STAND" })}
-        onDouble={() => dispatch({ type: "DOUBLE" })}
-        canDouble={doubleAvailable}
-      />
     </main>
   );
 }
