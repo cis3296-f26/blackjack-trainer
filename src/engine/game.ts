@@ -49,6 +49,7 @@ export interface GameState {
   lastbet: number;
   lastRound: RoundSummary | null;
   freePlay: boolean; // no chips at stake; the bankroll is left untouched until betting resumes
+  allowNegativeBalance: boolean; // true = keep betting below $0 with no refill; false = refill when broke
   rules: HouseRules;
 }
 
@@ -63,7 +64,9 @@ export type GameAction =
   | { type: 'SPLIT' }
   | { type: 'PLACE_BET'; amount: ChipValue }
   | { type: 'CLEAR_BET' }
+  | { type: 'ALL_IN' }
   | { type: 'SET_FREE_PLAY'; enabled: boolean }
+  | { type: 'SET_NEGATIVE_BALANCE'; enabled: boolean }
   | { type: 'SET_HOUSE_RULES'; rules: HouseRules }
   | { type: 'SURRENDER' };
 
@@ -82,6 +85,7 @@ export const initialState: GameState = {
   lastbet: 0,
   lastRound: null,
   freePlay: false,
+  allowNegativeBalance: false,
   rules: DEFAULT_HOUSE_RULES,
 };
 
@@ -90,13 +94,19 @@ export function activeBet(state: GameState): number {
   return state.splitHands[state.activeHandIndex]?.bet ?? state.currentBet;
 }
 
+// Whether the player may put this many more chips at stake. Free play has no stake,
+// and negative-balance mode lets the player bet on credit.
+function covers(state: GameState, amount: number): boolean {
+  return state.freePlay || state.allowNegativeBalance || state.balance >= amount;
+}
+
 // One split per round; any two ten-value cards are also eligible.
 export function canSplit(state: GameState): boolean {
   const [first, second] = state.playerHand;
   const value = (card: Card) => ['10', 'J', 'Q', 'K'].includes(card.rank) ? '10' : card.rank;
   return state.phase === 'playerTurn' && state.splitHands.length === 0 &&
     state.playerHand.length === 2 && value(first) === value(second) &&
-    (state.freePlay || state.balance >= state.currentBet);
+    covers(state, state.currentBet);
 }
 
 // Late surrender: give up the first two cards for half the bet back. A dealer blackjack
@@ -131,7 +141,7 @@ export function openingWager(state: GameState): number {
 export function canRebet(state: GameState): boolean {
   const amount = openingWager(state);
   return state.phase === 'done' && !state.freePlay && state.currentBet === 0 &&
-    amount > 0 && state.balance >= amount;
+    amount > 0 && covers(state, amount);
 }
 
 // Shared by settlement and the UI so displayed winnings use the same rounding.
@@ -145,13 +155,13 @@ export function returnedChips(wager: number, result: Result, payout: BlackjackPa
 }
 
 // Doubling is only allowed on the first two cards, only on totals the house allows,
-// and in betting mode only if the balance covers the extra bet
+// and in betting mode only if the balance covers the extra bet (or negative balance is allowed)
 export function canDouble(state: GameState): boolean {
   return (
     state.phase === "playerTurn" &&
     state.playerHand.length === 2 &&
     doubleAllowedOnTotal(handValue(state.playerHand).total, state.rules.doubleOn) &&
-    (state.freePlay || state.balance >= activeBet(state))
+    covers(state, activeBet(state))
   );
 }
 
@@ -196,7 +206,7 @@ function finish(state: GameState, earlyResult?: 'surrender'): GameState {
       total + returnedChips(hand.bet, hand.result!, state.rules.blackjackPayout), 0);
     const profit = returned - wager;
     const balance = state.freePlay ? state.balance : state.balance + returned;
-    const bailoutTriggered = !state.freePlay && balance <= 0;
+    const bailoutTriggered = !state.freePlay && !state.allowNegativeBalance && balance <= 0;
     const net = state.freePlay ? score : profit;
     // Rebet repeats the bet placed before the split, not the combined stake
     const first = splitHands[0];
@@ -235,6 +245,7 @@ function finish(state: GameState, earlyResult?: 'surrender'): GameState {
     state.currentBet,
     result,
     state.rules.blackjackPayout,
+    state.allowNegativeBalance,
   );
 
   return {
@@ -338,6 +349,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         lastRound: null,
         doubled: false,
         freePlay: state.freePlay,
+        allowNegativeBalance: state.allowNegativeBalance,
         rules: state.rules,
       };
 
@@ -424,7 +436,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (
         (state.phase !== "idle" && state.phase !== "done") ||
         state.freePlay ||
-        state.balance < action.amount
+        (!state.allowNegativeBalance && state.balance < action.amount)
       ) {
         return state;
       }
@@ -432,6 +444,24 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         balance: state.balance - action.amount,
         currentBet: state.currentBet + action.amount,
+        bailoutTriggered: false,
+      };
+    }
+
+    case "ALL_IN": {
+      // Move the whole remaining balance onto the bet. Needs money to move, so it does
+      // nothing at $0 or below (which negative-balance mode can reach).
+      if (
+        (state.phase !== "idle" && state.phase !== "done") ||
+        state.freePlay ||
+        state.balance <= 0
+      ) {
+        return state;
+      }
+      return {
+        ...state,
+        balance: 0,
+        currentBet: state.currentBet + state.balance,
         bailoutTriggered: false,
       };
     }
@@ -468,6 +498,27 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case "SET_NEGATIVE_BALANCE": {
+      // Bankroll mode can only change between hands
+      if (
+        (state.phase !== "idle" && state.phase !== "done") ||
+        state.allowNegativeBalance === action.enabled
+      ) {
+        return state;
+      }
+      // Refund any chips on the table so the bankroll is settled before the mode changes
+      const balance = state.balance + state.currentBet;
+      // Leaving negative mode while broke gives the usual refill, so the player can still bet
+      const bailoutTriggered = !action.enabled && balance <= 0;
+      return {
+        ...state,
+        allowNegativeBalance: action.enabled,
+        balance: bailoutTriggered ? BANKRUPT_BAILOUT : balance,
+        currentBet: 0,
+        bailoutTriggered,
+      };
+    }
+
     case "SET_HOUSE_RULES": {
       // House rules can only change between hands
       if (state.phase !== "idle" && state.phase !== "done") return state;
@@ -495,13 +546,15 @@ export function settleRoundBet(
   currentBet: number,
   outcome: Result,
   blackjackPayout: BlackjackPayout,
+  allowNegative = false,
 ): { nextBalance: number; bailoutTriggered: boolean } {
   // Same helper as the round summary, so the balance and the result banner always agree
   let nextBalance = balance + returnedChips(currentBet, outcome, blackjackPayout);
 
-  // Automatic Bankruptcy Bailout: If balance hits $0 after losing, grant $100
+  // Automatic Bankruptcy Bailout: If balance hits $0 after losing, grant $100,
+  // unless the player chose to let the balance go negative
   let bailoutTriggered = false;
-  if (nextBalance <= 0) {
+  if (!allowNegative && nextBalance <= 0) {
     nextBalance = BANKRUPT_BAILOUT;
     bailoutTriggered = true;
   }

@@ -2,6 +2,11 @@ import type { GameState } from './game';
 import { handValue, isBlackjack } from './hand';
 import { reshuffleThreshold } from './rules';
 
+// Dollar amount with the sign in front of the $, so a negative balance reads "−$50", not "$-50"
+export function formatMoney(amount: number): string {
+  return `${amount < 0 ? '−' : ''}$${Math.abs(amount)}`;
+}
+
 export function shoeStatus(state: GameState) {
   const total = state.rules.numDecks * 52;
   // An empty shoe means a new one will be created at the next deal.

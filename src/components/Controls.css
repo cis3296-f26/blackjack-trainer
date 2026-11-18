@@ -23,6 +23,7 @@
 .casino-chip:active:not(:disabled) { transform: translateY(0); }
 .casino-chip:disabled { filter: grayscale(40%); }
 .chip-inner { width: 37px; height: 37px; border-radius: 50%; background: #ffffffe6; color: #0f172a; font-weight: 800; font-size: 0.8rem; display: grid; place-items: center; box-shadow: inset 0 1px 3px #0004; }
+.casino-chip--max .chip-inner { font-size: 0.7rem; letter-spacing: 0.02em; }
 @media (max-width: 1023px) {
   .action-dock { position: sticky; bottom: 0; z-index: 5; background: #073821; padding-bottom: max(0.8rem, env(safe-area-inset-bottom)); box-shadow: 0 -6px 20px #00241655; }
 }
@@ -34,6 +35,7 @@
   .chip-rack { gap: 0.55rem; }
   .casino-chip { width: 48px; height: 48px; }
   .chip-inner { width: 32px; height: 32px; font-size: 0.75rem; }
+  .casino-chip--max .chip-inner { font-size: 0.62rem; }
   .controls { gap: 0.5rem; }
 }
 /* At high zoom or in landscape, let the entire panel scroll normally. */

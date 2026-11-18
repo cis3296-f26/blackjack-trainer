@@ -200,3 +200,72 @@ test('surrender in free play leaves the balance alone', () => {
   assert.equal(state.lastRound.freePlay, true);
   assert.equal(resultReason(state), 'You surrendered your 16.');
 });
+
+test('max bet moves the whole balance onto the bet and clear refunds it', () => {
+  const allIn = gameReducer(initialState, { type: 'ALL_IN' });
+  assert.equal(allIn.balance, 0);
+  assert.equal(allIn.currentBet, 500);
+  assert.equal(gameReducer(allIn, { type: 'ALL_IN' }), allIn);
+  const cleared = gameReducer(allIn, { type: 'CLEAR_BET' });
+  assert.equal(cleared.balance, 500);
+  assert.equal(cleared.currentBet, 0);
+
+  const toppedUp = gameReducer(gameReducer(initialState, { type: 'PLACE_BET', amount: 25 }), { type: 'ALL_IN' });
+  assert.equal(toppedUp.balance, 0);
+  assert.equal(toppedUp.currentBet, 500);
+
+  const free = gameReducer(initialState, { type: 'SET_FREE_PLAY', enabled: true });
+  assert.equal(gameReducer(free, { type: 'ALL_IN' }), free);
+  const playing = deal(['10', '6', '7', '10']);
+  assert.equal(gameReducer(playing, { type: 'ALL_IN' }), playing);
+});
+
+test('negative-balance mode lets the player bet on credit with no bailout', () => {
+  const negative = { ...initialState, allowNegativeBalance: true, balance: 10 };
+  // Max bet still works while the balance is above $0...
+  const allIn = gameReducer(negative, { type: 'ALL_IN' });
+  assert.equal(allIn.balance, 0);
+  assert.equal(allIn.currentBet, 10);
+  const bet = gameReducer(negative, { type: 'PLACE_BET', amount: 25 });
+  assert.equal(bet.balance, -15);
+  assert.equal(bet.currentBet, 25);
+  // ...but does nothing once it's at or below $0
+  assert.equal(gameReducer(bet, { type: 'ALL_IN' }), bet);
+  assert.equal(gameReducer(allIn, { type: 'ALL_IN' }), allIn);
+
+  const lost = gameReducer(gameReducer(bet, { type: 'DEAL', deck: deck('10', '10', '7', '8') }), { type: 'STAND' });
+  assert.equal(lost.balance, -15);
+  assert.equal(lost.bailoutTriggered, false);
+  assert.equal(lost.lastRound.bailout, 0);
+  assert.equal(canRebet(lost), true);
+  assert.equal(gameReducer(lost, { type: 'ALL_IN' }), lost);
+
+  const pair = gameReducer(gameReducer(lost, { type: 'PLACE_BET', amount: 25 }), { type: 'DEAL', deck: deck('8', '10', '8', '10', '9', '9') });
+  assert.equal(pair.balance, -40);
+  assert.equal(canDouble(pair), true);
+  assert.equal(canSplit(pair), true);
+  const split = gameReducer(pair, { type: 'SPLIT' });
+  assert.equal(split.balance, -65);
+  const done = gameReducer(gameReducer(split, { type: 'STAND' }), { type: 'STAND' });
+  assert.deepEqual(done.splitHands.map(hand => hand.result), ['lose', 'lose']);
+  assert.equal(done.balance, -65);
+  assert.equal(done.lastRound.bailout, 0);
+  assert.equal(settleRoundBet(0, 25, 'lose', '3:2', true).nextBalance, 0);
+});
+
+test('switching negative-balance mode refunds the pending bet and refills a broke player', () => {
+  const pending = gameReducer({ ...initialState, allowNegativeBalance: true }, { type: 'PLACE_BET', amount: 25 });
+  const off = gameReducer(pending, { type: 'SET_NEGATIVE_BALANCE', enabled: false });
+  assert.equal(off.allowNegativeBalance, false);
+  assert.equal(off.balance, 500);
+  assert.equal(off.currentBet, 0);
+  assert.equal(off.bailoutTriggered, false);
+
+  const broke = gameReducer({ ...initialState, allowNegativeBalance: true, phase: 'done', balance: -40 }, { type: 'SET_NEGATIVE_BALANCE', enabled: false });
+  assert.equal(broke.balance, 100);
+  assert.equal(broke.bailoutTriggered, true);
+
+  const midHand = deal(['10', '6', '7', '10']);
+  assert.equal(gameReducer(midHand, { type: 'SET_NEGATIVE_BALANCE', enabled: true }), midHand);
+  assert.equal(gameReducer(initialState, { type: 'SET_NEGATIVE_BALANCE', enabled: false }), initialState);
+});
