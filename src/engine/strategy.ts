@@ -175,11 +175,14 @@ function playerStep(hand: Total, counts: number[], ctx: Ctx): Step {
 
 // `canDouble` is for limits outside the rules (e.g. the bankroll can't cover the extra bet);
 // the first-two-cards and doubleOn restrictions are checked here either way
+// Split and surrender are opt-in so existing callers keep their current hints.
 export function analyzeHand(
     playerHand: Card[],
     dealerUpcard: Card,
     rules: StrategyRules,
     canDouble = true,
+    canSplit = false,
+    canSurrender = false,
 ): Analysis {
     const counts = Array<number>(13).fill(4 * rules.numDecks);
     for (const c of [...playerHand, dealerUpcard]) counts[RANKS.indexOf(c.rank)]--;

@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { canDouble, type GameState } from '../engine/game';
+import { canDouble, canSplit, canSurrender, type GameState } from '../engine/game';
 import { analyzeHand, type Outcome } from '../engine/strategy';
 import './Hint.css';
 
-const names = { hit: 'Hit', stand: 'Stand', double: 'Double' };
+const names = { hit: 'Hit', stand: 'Stand', double: 'Double', split: 'Split', surrender: 'Surrender' };
 const pct = (value: number) => `${Math.round(value * 100)}%`;
 
 function OutcomeRow({ label, outcome, best }: { label: string; outcome: Outcome; best: boolean }) {
@@ -20,10 +20,12 @@ export default function Hint({ state }: { state: GameState }) {
   const [open, setOpen] = useState(false);
   const available = state.phase === 'playerTurn';
   const doubleAvailable = canDouble(state);
+  const splitAvailable = canSplit(state);
+  const surrenderAvailable = canSurrender(state);
   // Strategy calculation is deferred until the player requests help.
   const analysis = useMemo(() => open && available
-    ? analyzeHand(state.playerHand, state.dealerHand[0], state.rules, doubleAvailable)
-    : null, [open, available, state.playerHand, state.dealerHand, doubleAvailable, state.rules]);
+    ? analyzeHand(state.playerHand, state.dealerHand[0], state.rules, doubleAvailable, splitAvailable, surrenderAvailable)
+    : null, [open, available, state.playerHand, state.dealerHand, doubleAvailable, splitAvailable, surrenderAvailable, state.rules]);
 
   return (
     <aside className="practice-panel" aria-label="Practice help">
@@ -50,10 +52,14 @@ export default function Hint({ state }: { state: GameState }) {
                   <OutcomeRow label="Hit" outcome={analysis.hit} best={analysis.recommended === 'hit'} />
                   <OutcomeRow label="Stand" outcome={analysis.stand} best={analysis.recommended === 'stand'} />
                   {analysis.double && <OutcomeRow label="Double" outcome={analysis.double} best={analysis.recommended === 'double'} />}
+                  {analysis.split && <OutcomeRow label="Split (estimate)" outcome={analysis.split} best={analysis.recommended === 'split'} />}
+                  {analysis.surrender && <OutcomeRow label="Surrender" outcome={analysis.surrender} best={analysis.recommended === 'surrender'} />}
                 </tbody>
               </table>
             </div>
             <p>EV is the average profit per original chip bet over many similar hands. A higher value is better; no move guarantees a win.</p>
+            {analysis.split && <p>Split EV covers both bets; percentages are per hand. This estimate assumes no doubles after splitting and ignores cards drawn by the other hand. Split aces receive one card.</p>}
+            {analysis.surrender && <p>Surrender EV assumes half your bet is returned. Actual refunds round down to whole chips.</p>}
           </details>
         </div>
       )}
