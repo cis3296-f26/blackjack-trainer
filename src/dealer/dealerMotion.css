@@ -1,0 +1,78 @@
+.casino-table-felt .dealer-motion {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.dealer-motion > svg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.dealer-sleeve,
+.dealer-sleeve-shadow {
+  fill: none;
+  stroke: #263439;
+  stroke-width: 28;
+  stroke-linecap: butt;
+}
+
+.dealer-sleeve-shadow {
+  stroke: #132022;
+  stroke-width: 33;
+}
+
+.dealer-motion .dealer-flight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0;
+  transform-origin: center;
+}
+
+.dealer-motion .dealer-flight[hidden] {
+  display: none;
+}
+
+.dealer-card-hidden,
+.casino-table-felt[data-dealing] .hand__total,
+.casino-table-felt[data-dealing] .split-hand__status {
+  visibility: hidden;
+}
+
+.dealer-status {
+  grid-area: actions;
+  align-self: start;
+  color: var(--cream);
+  margin: 0;
+  padding: 1rem;
+}
+
+@media (max-width: 600px) {
+  .casino-scene .casino-table-felt {
+    padding-top: 56px;
+  }
+
+  .casino-scene .casino-top-equipment {
+    display: flex;
+    inset: 3px 6% auto;
+  }
+
+  .casino-top-equipment .dealer-chip-tray {
+    display: none;
+  }
+
+  .casino-top-equipment .black-dealing-shoe {
+    transform: rotate(20deg) scale(0.68);
+    transform-origin: top right;
+  }
+
+  .casino-top-equipment .discard-holder {
+    transform: rotate(-18deg) scale(0.72);
+    transform-origin: top left;
+  }
+}
