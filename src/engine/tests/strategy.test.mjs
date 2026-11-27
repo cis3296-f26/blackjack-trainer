@@ -3,6 +3,7 @@ import test from 'node:test';
 import { loadEngine } from './loadEngine.mjs';
 
 const { analyzeHand } = await loadEngine('strategy');
+const { initialState, canDouble, canSplit, canSurrender } = await loadEngine('game');
 const card = (rank) => ({ rank, suit: '♠' });
 const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-10);
 const sumTo1 = (probs) => near(probs.reduce((a, b) => a + b, 0), 1);
@@ -83,4 +84,58 @@ test('deck count comes from the rules', () => {
     const one = analyzeHand([card('10'), card('6')], card('10'), S17);
     const six = analyzeHand([card('10'), card('6')], card('10'), { ...S17, numDecks: 6 });
     assert.notEqual(one.hit.ev, six.hit.ev);
+});
+
+test('existing callers do not opt into split or surrender hints', () => {
+    const analysis = analyzeHand([card('8'), card('8')], card('6'), S17);
+    assert.equal(analysis.split, null);
+    assert.equal(analysis.surrender, null);
+    assert.equal(analysis.recommended, 'stand');
+});
+
+test('split and surrender availability can be enabled independently', () => {
+    const split = analyzeHand([card('8'), card('8')], card('6'), S17, true, true, false);
+    assert.equal(split.recommended, 'split');
+    assert.ok(split.split);
+    assert.equal(split.surrender, null);
+    const surrender = analyzeHand([card('10'), card('6')], card('10'), S17, true, false, true);
+    assert.equal(surrender.recommended, 'surrender');
+    assert.equal(surrender.split, null);
+    assert.equal(surrender.surrender.ev, -0.5);
+});
+
+test('enabling split and surrender still excludes them after a hit', () => {
+    const analysis = analyzeHand([card('2'), card('3'), card('6')], card('6'), S17, true, true, true);
+    assert.equal(analysis.split, null);
+    assert.equal(analysis.surrender, null);
+    assert.equal(analysis.recommended, 'hit');
+});
+
+test('game availability enables hint data independently of double restrictions and bankroll', () => {
+    const state = {
+        ...initialState,
+        phase: 'playerTurn',
+        playerHand: [card('8'), card('8')],
+        dealerHand: [card('6'), card('10')],
+        rules: { ...initialState.rules, numDecks: 1, doubleOn: '10-11' },
+        currentBet: 25,
+        balance: 25,
+    };
+    const analyze = (s) => analyzeHand(s.playerHand, s.dealerHand[0], s.rules,
+        canDouble(s), canSplit(s), canSurrender(s));
+    const eligible = analyze(state);
+    assert.equal(eligible.double, null);
+    assert.ok(eligible.split);
+    assert.ok(eligible.surrender);
+    assert.equal(eligible.recommended, 'split');
+
+    const insufficientFunds = analyze({ ...state, balance: 0 });
+    assert.equal(insufficientFunds.split, null);
+    assert.ok(insufficientFunds.surrender);
+
+    const afterSplit = analyze({ ...state, splitHands: [
+        { cards: state.playerHand, bet: 25, doubled: false, complete: false, result: null },
+    ] });
+    assert.equal(afterSplit.split, null);
+    assert.equal(afterSplit.surrender, null);
 });
